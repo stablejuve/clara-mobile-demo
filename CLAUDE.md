@@ -8,3 +8,4 @@ Expo app (fork del cascarón `pickler-expo/apps/mobile`) que demuestra el módul
 - Copy en `src/i18n/es.ts`; nunca texto hardcodeado en pantallas.
 - Comandos: `npm install`, `npx expo start`, `npm test`, `npm run typecheck`. iOS: `scripts/ios-archive.sh` y `scripts/ios-upload.sh` (heredados).
 - No commitear llaves ni defaults de servicios reales en `app.config.ts`.
+- Panel de demo: 5 s sobre «powered by Relayer». Face ID del simulador: inscribirlo antes de un recorrido (sin inscripción se simula). Checklist: `docs/walkthrough.md`.
