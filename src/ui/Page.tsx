@@ -1,6 +1,7 @@
 import { useNavigation } from "@react-navigation/native";
-import type { ReactElement, ReactNode } from "react";
+import { useEffect, useRef, type ReactElement, type ReactNode } from "react";
 import { ScrollView, View } from "react-native";
+import { devFlags } from "../dev/flags";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AppCtx } from "../ctx";
 import { useAppCtx } from "../navigation/context";
@@ -43,8 +44,17 @@ export function Page({ screen, children, headerRight }: { screen: Screen; childr
 export function PageScroll({ screen, children }: { screen: Screen; children: ReactNode }) {
   const insets = useSafeAreaInsets();
   const showTabs = SHOW_TABS.includes(screen);
+  const ref = useRef<ScrollView>(null);
+  // Solo desarrollo: el deep link `demo/open/<screen>?scrollEnd=1` pide ver el final de la página (capturas).
+  useEffect(() => {
+    if (!__DEV__ || !devFlags.scrollEndOnMount) return;
+    devFlags.scrollEndOnMount = false;
+    const id = setTimeout(() => ref.current?.scrollToEnd({ animated: false }), 600);
+    return () => clearTimeout(id);
+  }, []);
   return (
     <ScrollView
+      ref={ref}
       style={{ flex: 1 }}
       // Las raíces reservan el hueco de la tab bar absoluta; las del módulo no lo necesitan.
       contentContainerStyle={{ flexGrow: 1, paddingBottom: showTabs ? tabBarHeight(insets.bottom) : 0 }}

@@ -30,3 +30,8 @@ export const ROOT_OF: Record<Screen, HostScreen> = {
   balance: "benefits", deposit: "benefits", cardRequest: "benefits", cardAuthorize: "benefits", card: "benefits", addToWallet: "benefits",
   bankAccount: "benefits", send: "benefits", sendReceipt: "benefits", settings: "benefits", demoPanel: "benefits",
 };
+
+/** Guard para strings externos (deep links de desarrollo). */
+export function isScreen(v: string): v is Screen {
+  return (HOST_SCREENS as readonly string[]).includes(v) || (MODULE_SCREENS as readonly string[]).includes(v);
+}

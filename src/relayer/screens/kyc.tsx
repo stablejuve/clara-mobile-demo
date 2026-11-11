@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Linking, View } from "react-native";
+import { View } from "react-native";
 import type { AppCtx } from "../../ctx";
 import { useAction } from "../../hooks/useAction";
 import { t } from "../../i18n/es";
-import { KYC_RETURN_URL } from "../../navigation/deepLink";
 import type { KycLinks } from "../types";
 import { Body, Btn, Card, Chip, Icon, type IconName, Row, StatusCard, T, Tag, Warn } from "../../ui/primitives";
 import { useTheme } from "../../ui/ThemeProvider";
@@ -29,16 +28,14 @@ export function KycScreen({ nav, module, kycReturn }: AppCtx) {
     const l = await run(() => api.startKyc());
     if (l) { setLinks(l); setStep("document"); }
   };
-  // Fin del proveedor: regresa a la app por el deep link del redirect_uri. Si el sistema no lo entrega (o tarda), el fallback
-  // llama al mismo manejador que usaría el listener de Linking.
+  // Fin del proveedor. En la fase real, Persona termina en un navegador externo y regresa por el `redirect_uri`
+  // (`relayermobiledemo://recibo/kyc-return`, escuchado en App.tsx). En la demo el proveedor es una pantalla de la propia
+  // app: abrir nuestro propio esquema con Linking.openURL hace que iOS pregunte "¿Abrir en Acme Beneficios?" y corta el
+  // flujo, así que se llama al mismo manejador directamente tras una pausa corta que imita el regreso.
   const finish = async () => {
     setStep("done");
-    try {
-      await Linking.openURL(KYC_RETURN_URL);
-      setTimeout(() => { if (kycRef.current === "incomplete") void kycReturn(); }, RETURN_FALLBACK_MS);
-    } catch {
-      await kycReturn();
-    }
+    await new Promise((r) => setTimeout(r, RETURN_FALLBACK_MS));
+    if (kycRef.current === "incomplete") await kycReturn();
   };
 
   if (step === "intro") {

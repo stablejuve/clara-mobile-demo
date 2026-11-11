@@ -13,6 +13,8 @@ import { useModule } from "./src/hooks/useModule";
 import { useNotifications } from "./src/hooks/useNotifications";
 import { AppCtxProvider } from "./src/navigation/context";
 import { parseDeepLink } from "./src/navigation/deepLink";
+import { isScreen } from "./src/navigation/screens";
+import { devFlags } from "./src/dev/flags";
 import { Navigator } from "./src/navigation/Navigator";
 import { createMockApi } from "./src/relayer/mock/mockApi";
 import { type AppStore, useAppStore } from "./src/store";
@@ -42,7 +44,11 @@ function Shell() {
   }, [nav]);
   // Deep link relayermobiledemo://recibo/kyc-return: en caliente (listener) y en frío (initial URL).
   useEffect(() => {
-    const handle = (url: string | null) => { if (parseDeepLink(url)?.kind === "kyc-return") void kycReturn(); };
+    const handle = (url: string | null) => {
+      const link = parseDeepLink(url, __DEV__);
+      if (link?.kind === "kyc-return") void kycReturn();
+      else if (link?.kind === "open" && isScreen(link.screen)) { devFlags.scrollEndOnMount = link.scrollEnd; nav(link.screen); }
+    };
     Linking.getInitialURL().then(handle).catch(() => {});
     const sub = Linking.addEventListener("url", (e) => handle(e.url));
     return () => sub.remove();

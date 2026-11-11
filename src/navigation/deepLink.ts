@@ -3,10 +3,14 @@
 export const SCHEME = "relayermobiledemo";
 export const KYC_RETURN_URL = `${SCHEME}://recibo/kyc-return`;
 
-export type DeepLink = { kind: "kyc-return" };
+export type DeepLink = { kind: "kyc-return" } | { kind: "open"; screen: string; scrollEnd: boolean };
 
-export function parseDeepLink(url: string | null | undefined): DeepLink | null {
+/** `relayermobiledemo://recibo/kyc-return` (producto) y, solo en desarrollo, `relayermobiledemo://demo/open/<screen>`
+ *  para abrir una pantalla sin tocar el simulador (capturas, walkthrough automatizado). */
+export function parseDeepLink(url: string | null | undefined, dev = false): DeepLink | null {
   if (!url) return null;
+  const open = /^relayermobiledemo:\/\/demo\/open\/([a-zA-Z]+)\/?(\?.*)?$/.exec(url);
+  if (open) return dev ? { kind: "open", screen: open[1], scrollEnd: /[?&]scrollEnd=1/.test(open[2] ?? "") } : null;
   const m = /^relayermobiledemo:\/\/recibo\/([a-z-]+)\/?(\?.*)?$/.exec(url);
   if (!m) return null;
   return m[1] === "kyc-return" ? { kind: "kyc-return" } : null;
