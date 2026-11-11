@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# TestFlight (App Store Connect API key), nunca se commitea
+.env.asc
+build/

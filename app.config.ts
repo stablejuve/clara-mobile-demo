@@ -1,49 +1,40 @@
 import type { ExpoConfig } from "expo/config";
 
-const rpId = process.env.PICKLER_RP_ID ?? "pickler.fun";
-// Key de MonadScan (Etherscan V2). Pública, solo lectura, testnet; se rota desde etherscan.io.
-const monadscanKey = process.env.PICKLER_MONADSCAN_KEY ?? "AHQMBTI74BYK33SZS47XF49SIADAG9VUYW";
-// Perpl: vacío = testnet (src/perpl/config.ts). Para mainnet se fijan ambas.
-const perplRest = process.env.PICKLER_PERPL_REST ?? "";
-const perplWs = process.env.PICKLER_PERPL_WS ?? "";
-const perplMarketDataWs = process.env.PICKLER_PERPL_MARKET_DATA_WS ?? "";
-// Servicio de reads (services/reads, Supabase pickler). Vacío = el de producción (src/config/reads.ts).
-const readsUrl = process.env.PICKLER_READS_URL ?? "";
-const bundleIdentifier = "fun.pickler.app";
+// Demo del módulo Recibo dentro de "Acme Beneficios" (spec D4/D9). Sin servicios reales: nada de `extra` ni env.
+const bundleIdentifier = "fi.relayer.mobiledemo";
+const PAPER = "#FBFBFA";   // --surface-page light (src/ui/theme.ts LIGHT.page)
+const CARBON = "#121819";  // --surface-page dark  (DARK.page)
+const faceIDPermission = "Acme Beneficios usa Face ID para crear y usar tu wallet de Recibo.";
 
 const config: ExpoConfig = {
-  name: "Pickler",
-  slug: "pickler-mobile",
+  name: "Acme Beneficios",
+  slug: "relayer-mobiledemo",
   version: "0.1.0",
   orientation: "portrait",
-  // 1024x1024 sin alfa (Apple lo exige). Fuente: PicklerProfile.png del equipo.
+  // 1024x1024 sin alfa (Apple lo exige). Placeholder: scripts/make-placeholder-assets.mjs.
   icon: "./assets/icon.png",
-  userInterfaceStyle: "light",
-  backgroundColor: "#FFFFFF",
+  scheme: "relayermobiledemo",
+  userInterfaceStyle: "automatic",
+  backgroundColor: PAPER,
   ios: {
     bundleIdentifier,
-    buildNumber: "11",
+    buildNumber: "1",
     supportsTablet: false,
-    backgroundColor: "#FFFFFF",
-    associatedDomains: [`webcredentials:${rpId}`],
+    backgroundColor: PAPER,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      NSFaceIDUsageDescription: faceIDPermission,
     },
   },
+  android: { package: bundleIdentifier },
   plugins: [
     "expo-font",
-    [
-      "expo-secure-store",
-      {
-        faceIDPermission:
-          "Pickler uses Face ID to unlock the account stored on this device.",
-      },
-    ],
+    ["expo-secure-store", { faceIDPermission }],
+    ["expo-local-authentication", { faceIDPermission }],
     ["expo-build-properties", { ios: { deploymentTarget: "18.0" } }],
     ["expo-notifications", { enableBackgroundRemoteNotifications: false }],
-    ["expo-splash-screen", { image: "./assets/splash-mark.png", imageWidth: 140, resizeMode: "contain", backgroundColor: "#FFFFFF" }],
+    ["expo-splash-screen", { image: "./assets/splash-mark.png", imageWidth: 140, resizeMode: "contain", backgroundColor: PAPER, dark: { backgroundColor: CARBON } }],
   ],
-  extra: { rpId, monadscanKey, perplRest, perplWs, perplMarketDataWs, readsUrl },
 };
 
 export default config;

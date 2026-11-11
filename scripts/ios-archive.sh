@@ -22,9 +22,9 @@ fi
 rm -rf build
 npx expo prebuild --platform ios --clean
 
-xcodebuild -workspace ios/Pickler.xcworkspace -scheme Pickler \
+xcodebuild -workspace ios/AcmeBeneficios.xcworkspace -scheme AcmeBeneficios \
   -destination 'generic/platform=iOS' \
-  -archivePath build/Pickler.xcarchive \
+  -archivePath build/AcmeBeneficios.xcarchive \
   -allowProvisioningUpdates \
   -authenticationKeyPath "$KEY_PATH" \
   -authenticationKeyID "$ASC_KEY_ID" \
@@ -33,7 +33,7 @@ xcodebuild -workspace ios/Pickler.xcworkspace -scheme Pickler \
   clean archive
 
 xcodebuild -exportArchive \
-  -archivePath build/Pickler.xcarchive \
+  -archivePath build/AcmeBeneficios.xcarchive \
   -exportOptionsPlist ExportOptions.plist \
   -exportPath build/export \
   -allowProvisioningUpdates \
@@ -41,4 +41,4 @@ xcodebuild -exportArchive \
   -authenticationKeyID "$ASC_KEY_ID" \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
-echo "✓ $DIR/build/export/Pickler.ipa"
+echo "✓ $DIR/build/export/AcmeBeneficios.ipa"
