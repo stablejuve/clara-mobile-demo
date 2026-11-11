@@ -2,28 +2,56 @@ import { InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600
 import { JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bold } from "@expo-google-fonts/jetbrains-mono";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
-import { StatusBar, View } from "react-native";
+import { useCallback, useEffect, useRef } from "react";
+import { Linking, StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { T, Tag } from "./src/ui/primitives";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import type { AppCtx } from "./src/ctx";
+import { useCurrentScreen } from "./src/hooks/useCurrentScreen";
+import { useFaceId } from "./src/hooks/useFaceId";
+import { useModule } from "./src/hooks/useModule";
+import { useNotifications } from "./src/hooks/useNotifications";
+import { AppCtxProvider } from "./src/navigation/context";
+import { parseDeepLink } from "./src/navigation/deepLink";
+import { Navigator } from "./src/navigation/Navigator";
+import { createMockApi } from "./src/relayer/mock/mockApi";
+import { type AppStore, useAppStore } from "./src/store";
+import { asyncStorageKv } from "./src/storage/asyncKv";
 import { ThemeProvider, useTheme } from "./src/ui/ThemeProvider";
 
 void SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ fade: true, duration: 200 });
 
-function Placeholder() {
-  const { c, scheme } = useTheme();
+// Único punto que crea la implementación del API (D6): cambiar esta línea es cambiar el mock por el backend real.
+const api = createMockApi({ storage: asyncStorageKv });
+
+function Shell() {
+  const { scheme } = useTheme();
+  const scr = useCurrentScreen();
+  const storeRef = useRef<AppStore | null>(null);
+  // Tap en la notificación de depósito: abre el detalle respetando el gate.
+  const notifications = useNotifications((target) => { storeRef.current?.requireModule("deposit", { depositId: target.movementId }); });
+  const module = useModule(api, (m) => { void notifications.notifyDeposit(m); });
+  const store = useAppStore({ moduleActive: module.active, scr });
+  storeRef.current = store;
+  const faceId = useFaceId();
+  const { nav } = store;
+  const kycReturn = useCallback(async () => {
+    try { await api.completeKycReturn(); } catch { /* ya estaba en revisión o no había KYC abierto: kycPending lo explica */ }
+    nav("kycPending");
+  }, [nav]);
+  // Deep link relayermobiledemo://recibo/kyc-return: en caliente (listener) y en frío (initial URL).
+  useEffect(() => {
+    const handle = (url: string | null) => { if (parseDeepLink(url)?.kind === "kyc-return") void kycReturn(); };
+    Linking.getInitialURL().then(handle).catch(() => {});
+    const sub = Linking.addEventListener("url", (e) => handle(e.url));
+    return () => sub.remove();
+  }, [kycReturn]);
+  const ctx: AppCtx = { ...store, module, faceId, notifications, kycReturn };
   return (
     <>
       <StatusBar barStyle={scheme === "dark" ? "light-content" : "dark-content"} />
-      <SafeAreaView style={{ flex: 1, backgroundColor: c.page }}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 10, padding: 24 }}>
-          <Tag>Acme Beneficios</Tag>
-          <T w={600} s={28} lh={1.1} ls={-0.02}>Recibo</T>
-          <T w={400} s={13} lh={1.4} color={c.ink72}>Cascarón vacío. El módulo llega en las siguientes tareas.</T>
-        </View>
-      </SafeAreaView>
+      <AppCtxProvider value={ctx}><Navigator /></AppCtxProvider>
     </>
   );
 }
@@ -34,11 +62,11 @@ export default function App() {
     JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_700Bold,
   });
   useEffect(() => { if (fontsLoaded) void SplashScreen.hideAsync(); }, [fontsLoaded]);
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded) return null; // el splash nativo sigue en pantalla
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider><Placeholder /></ThemeProvider>
+        <ThemeProvider><Shell /></ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
