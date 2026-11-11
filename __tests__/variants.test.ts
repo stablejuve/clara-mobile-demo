@@ -1,19 +1,22 @@
-import { BTN_VARIANTS } from "../src/ui/variants";
-import { C } from "../src/ui/theme";
+import { contrast } from "../src/ui/contrast";
+import { DARK, LIGHT, PALETTES } from "../src/ui/theme";
+import { btnVariants, tone } from "../src/ui/variants";
 
-test("primary is lime with ink text; ink is the dark CTA; ask is the violet tint", () => {
-  expect(BTN_VARIANTS.lime).toEqual({ bg: C.lime, bd: C.lime, fg: C.ink, w: 600 });
-  expect(BTN_VARIANTS.ink).toEqual({ bg: C.ink, bd: C.ink, fg: C.onInk, w: 600 });
-  expect(BTN_VARIANTS.ask).toEqual({ bg: C.vioBg, bd: C.vioBg, fg: C.vio, w: 600 });
-  expect(BTN_VARIANTS.tile).toEqual({ bg: C.tile, bd: C.tile, fg: C.onInk, w: 600 });
+test.each(["light", "dark"] as const)("cada variante de botón se lee (%s)", (scheme) => {
+  const c = PALETTES[scheme];
+  const v = btnVariants(c);
+  expect(v.primary).toEqual({ bg: c.btnPrimary, bd: c.btnPrimary, fg: c.onBtnPrimary, w: 600 });
+  expect(v.brand).toEqual({ bg: c.brand, bd: c.brand, fg: c.onBrand, w: 600 });
+  expect(v.control).toEqual({ bg: c.sub, bd: c.sub, fg: c.inkStrong, w: 600 });
+  expect(v.outline).toEqual({ bg: "transparent", bd: c.ink15, fg: c.inkStrong, w: 600 });
+  expect(v.ghost.fg).toBe(c.ink72);
+  expect(v.danger.fg).toBe(c.error);
+  for (const k of ["primary", "brand", "control"] as const) expect(contrast(v[k].fg, v[k].bg)).toBeGreaterThanOrEqual(4.5);
+  for (const k of ["outline", "ghost"] as const) expect(contrast(v[k].fg, c.page)).toBeGreaterThanOrEqual(4.5);
 });
 
-test("the old outline variants become control fills (the Handoff has no hairline buttons)", () => {
-  for (const v of ["outline", "outline2", "outline20"] as const) expect(BTN_VARIANTS[v]).toEqual({ bg: C.ctl, bd: C.ctl, fg: C.ink, w: 600 });
-  expect(BTN_VARIANTS.violetSoft).toEqual(BTN_VARIANTS.ask);
-  expect(BTN_VARIANTS.violetSoft10).toEqual(BTN_VARIANTS.ask);
-});
-
-test("no variant paints lime text", () => {
-  for (const v of Object.values(BTN_VARIANTS)) expect(v.fg).not.toBe(C.lime);
+test("tone: borde al 35 %, fondo al 12 %, texto del color; neutral usa sub/ink", () => {
+  expect(tone(LIGHT, "warning")).toEqual({ bd: "rgba(181,113,0,0.35)", bg: "rgba(181,113,0,0.12)", fg: "#B57100" });
+  expect(tone(DARK, "error")).toEqual({ bd: "rgba(216,121,104,0.35)", bg: "rgba(216,121,104,0.12)", fg: "#D87968" });
+  expect(tone(DARK, "neutral")).toEqual({ bd: DARK.ink15, bg: DARK.sub, fg: DARK.ink72 });
 });

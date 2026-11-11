@@ -1,43 +1,47 @@
 import { type ReactNode, useEffect, useRef } from "react";
-import { Animated, Easing, type Insets, Pressable, type StyleProp, Text, TextInput, type TextStyle, View, type ViewStyle } from "react-native";
+import { ActivityIndicator, Animated, Easing, type Insets, Pressable, type StyleProp, Text, TextInput, type TextInputProps, type TextStyle, View, type ViewStyle } from "react-native";
 import {
-  Activity, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChartLine, CircleQuestionMark, ExternalLink, Layers, LayoutGrid, MessageCircle, Rocket, ScanFace, Search, Send, SlidersHorizontal, User, Wallet,
+  ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BadgeCheck, Banknote, Bell, Bug, Check as CheckGlyph, ChevronRight, CircleAlert, CircleCheck, Clock, Copy, CreditCard, Download,
+  Eye, EyeOff, FileText, Gift, HandCoins, House, Info, Landmark, Lock, LogOut, QrCode, Receipt, ScanFace, Send, Settings, Share2, ShieldCheck, Smartphone, Snowflake, Sparkles, User, Wallet, X,
 } from "lucide-react-native";
-import Svg, { Polyline } from "react-native-svg";
-import { C, textStyle } from "./theme";
-import { BTN_VARIANTS, type BtnVariant } from "./variants";
-export type { BtnVariant } from "./variants";
+import { RADIUS, textStyle } from "./theme";
+import { useTheme } from "./ThemeProvider";
+import { btnVariants, type BtnVariant, type Tone, tone, type ToneName } from "./variants";
+export type { BtnVariant, Tone, ToneName } from "./variants";
 
 // ---------------------------------------------------------------------------
-// Texto: w=peso, s=tamaño, lh=ratio, ls=em; mono (JetBrains) | display (Archivo wdth 112).
+// Texto: w=peso, s=tamaño, lh=ratio, ls=em; mono (JetBrains). Sin color: inkStrong de la paleta.
 export type TProps = {
-  w?: number; s?: number; lh?: number; ls?: number; mono?: boolean; display?: boolean; color?: string;
-  style?: StyleProp<TextStyle>; numberOfLines?: number; children?: ReactNode; accessibilityLabel?: string;
+  w?: number; s?: number; lh?: number; ls?: number; mono?: boolean; color?: string;
+  style?: StyleProp<TextStyle>; numberOfLines?: number; children?: ReactNode; accessibilityLabel?: string; selectable?: boolean;
 };
 
-export function T({ w = 400, s = 13, lh, ls, mono, display, color, style, numberOfLines, accessibilityLabel, children }: TProps) {
+export function T({ w = 400, s = 14, lh, ls, mono, color, style, numberOfLines, accessibilityLabel, selectable, children }: TProps) {
+  const { c } = useTheme();
   return (
-    <Text numberOfLines={numberOfLines} accessibilityLabel={accessibilityLabel} style={[textStyle(w, s, { lh, ls, mono, display, color }), style]}>
+    <Text numberOfLines={numberOfLines} accessibilityLabel={accessibilityLabel} selectable={selectable} style={[textStyle(w, s, { lh, ls, mono, color: color ?? c.inkStrong }), style]}>
       {children}
     </Text>
   );
 }
 
-/** Línea mono en mayúsculas: `font:500 9.5px/1 mono; letter-spacing:.1em`. */
-export function Tag({ children, color = C.faint, s = 10, style }: { children: ReactNode; color?: string; s?: number; style?: StyleProp<TextStyle> }) {
-  return <T w={500} s={s} lh={1} ls={0.1} mono color={color} style={style}>{children}</T>;
+/** Eyebrow mono de Relayer: 10.5 px, peso 500, tracking .08em, mayúsculas. Sin color: ink55. */
+export function Tag({ children, color, s = 10.5, style }: { children: ReactNode; color?: string; s?: number; style?: StyleProp<TextStyle> }) {
+  const { c } = useTheme();
+  return <T w={500} s={s} lh={1} ls={0.08} mono color={color ?? c.ink55} style={style}>{typeof children === "string" ? children.toUpperCase() : children}</T>;
 }
 
 export type TouchProps = {
-  onPress?: () => void; style?: StyleProp<ViewStyle>; children?: ReactNode; disabled?: boolean;
-  // Insets, no sólo un número parejo: los puntos del onboarding necesitan más alto que ancho (item 10 de la ola final).
+  onPress?: () => void; onLongPress?: () => void; delayLongPress?: number; style?: StyleProp<ViewStyle>; children?: ReactNode; disabled?: boolean;
   hitSlop?: number | Insets; accessibilityLabel?: string;
 };
 
-export function Touch({ onPress, style, children, disabled, hitSlop, accessibilityLabel }: TouchProps) {
+export function Touch({ onPress, onLongPress, delayLongPress, style, children, disabled, hitSlop, accessibilityLabel }: TouchProps) {
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={delayLongPress}
       disabled={disabled}
       hitSlop={hitSlop}
       accessibilityLabel={accessibilityLabel}
@@ -49,124 +53,104 @@ export function Touch({ onPress, style, children, disabled, hitSlop, accessibili
 }
 
 // ---------------------------------------------------------------------------
-// Iconos lucide (el diseño usa SVGs enmascarados con estos mismos glifos).
+// Iconos lucide.
 const ICONS = {
-  back: ArrowLeft, arrow: ArrowRight, search: Search, send: Send, sliders: SlidersHorizontal, help: CircleQuestionMark,
-  chart: ChartLine, rocket: Rocket, activity: Activity, layers: Layers, wallet: Wallet,
-  grid: LayoutGrid, user: User, ask: MessageCircle, down: ArrowDown, up: ArrowUp, external: ExternalLink, faceId: ScanFace,
+  back: ArrowLeft, arrow: ArrowRight, down: ArrowDown, up: ArrowUp, chevron: ChevronRight,
+  home: House, gift: Gift, user: User, card: CreditCard, bank: Landmark, shield: ShieldCheck, faceId: ScanFace, send: Send,
+  wallet: Wallet, settings: Settings, check: CheckGlyph, copy: Copy, share: Share2, freeze: Snowflake, bell: Bell, lock: Lock,
+  alert: CircleAlert, ok: CircleCheck, clock: Clock, phone: Smartphone, receipt: Receipt, verified: BadgeCheck, eye: Eye, eyeOff: EyeOff,
+  close: X, doc: FileText, info: Info, logout: LogOut, download: Download, bug: Bug, banknote: Banknote, qr: QrCode, sparkles: Sparkles, coins: HandCoins,
 } as const;
 export type IconName = keyof typeof ICONS;
 
-export function Icon({ name, size = 15, color = C.ink, strokeWidth = 1.9 }: { name: IconName; size?: number; color?: string; strokeWidth?: number }) {
+export function Icon({ name, size = 16, color, strokeWidth = 1.8 }: { name: IconName; size?: number; color?: string; strokeWidth?: number }) {
+  const { c } = useTheme();
   const Cmp = ICONS[name];
-  return <Cmp size={size} color={color} strokeWidth={strokeWidth} />;
+  return <Cmp size={size} color={color ?? c.inkStrong} strokeWidth={strokeWidth} />;
 }
 
 // ---------------------------------------------------------------------------
 // Superficies.
-export type CardProps = { children?: ReactNode; style?: StyleProp<ViewStyle>; bd?: string; bg?: string; radius?: number; pad?: number; gap?: number };
+export type CardProps = { children?: ReactNode; style?: StyleProp<ViewStyle>; bd?: string; bg?: string; pad?: number; gap?: number };
 
-/** Superficie estándar: relleno C.card, sin borde, radio 20. */
-export function Card({ children, style, bd = "transparent", bg = C.card, radius = 20, pad = 16, gap }: CardProps) {
+/** Card de Relayer: fondo card, hairline ink08, radio 2. */
+export function Card({ children, style, bd, bg, pad = 16, gap }: CardProps) {
+  const { c } = useTheme();
   return (
-    <View style={[{ padding: pad, borderRadius: radius, borderWidth: 1, borderColor: bd, backgroundColor: bg, gap }, style]}>
+    <View style={[{ padding: pad, borderRadius: RADIUS.card, borderWidth: 1, borderColor: bd ?? c.ink08, backgroundColor: bg ?? c.card, gap }, style]}>
       {children}
     </View>
   );
 }
 
-export function TouchCard({ onPress, children, style, bd = "transparent", bg = C.card, pad = 16, radius = 20, disabled, accessibilityLabel }: TouchProps & { bd?: string; bg?: string; pad?: number; radius?: number }) {
+export function TouchCard({ onPress, onLongPress, delayLongPress, children, style, bd, bg, pad = 16, disabled, accessibilityLabel }: TouchProps & { bd?: string; bg?: string; pad?: number }) {
+  const { c } = useTheme();
   return (
-    <Touch onPress={onPress} disabled={disabled} accessibilityLabel={accessibilityLabel} style={[{ padding: pad, borderRadius: radius, borderWidth: 1, borderColor: bd, backgroundColor: bg }, style]}>
+    <Touch onPress={onPress} onLongPress={onLongPress} delayLongPress={delayLongPress} disabled={disabled} accessibilityLabel={accessibilityLabel}
+      style={[{ padding: pad, borderRadius: RADIUS.card, borderWidth: 1, borderColor: bd ?? c.ink08, backgroundColor: bg ?? c.card }, style]}>
       {children}
     </Touch>
   );
 }
 
-/** Fila clave/valor mono: `font:500 10px/1.4 mono; color:#8891B5` con valor ink. */
-export function KV({ k, v, vFg = C.ink, kFg = C.faint }: { k: string; v: string; vFg?: string; kFg?: string }) {
+/** Fila clave/valor: clave mono ink55, valor mono inkStrong. */
+export function KV({ k, v, vFg, kFg }: { k: string; v: string; vFg?: string; kFg?: string }) {
+  const { c } = useTheme();
   return (
     <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
-      <T w={500} s={10.5} lh={1.4} mono color={kFg}>{k}</T>
-      <T w={700} s={12.5} lh={1.4} mono color={vFg} style={{ textAlign: "right", flexShrink: 1 }}>{v}</T>
+      <T w={500} s={10.5} lh={1.4} ls={0.08} mono color={kFg ?? c.ink55}>{k.toUpperCase()}</T>
+      <T w={500} s={12.5} lh={1.4} mono color={vFg ?? c.inkStrong} style={{ textAlign: "right", flexShrink: 1 }} selectable>{v}</T>
     </View>
   );
 }
 
 export type KVRow = { label: string; value: string; fg?: string };
 
-export function KVList({ rows, top, gap = 7, kFg, style }: { rows: KVRow[]; top?: boolean; gap?: number; kFg?: string; style?: StyleProp<ViewStyle> }) {
+export function KVList({ rows, top, gap = 8, style }: { rows: KVRow[]; top?: boolean; gap?: number; style?: StyleProp<ViewStyle> }) {
+  const { c } = useTheme();
   return (
-    <View style={[{ gap, paddingTop: top ? 9 : 0, borderTopWidth: top ? 1 : 0, borderTopColor: C.hair12 }, style]}>
-      {rows.map((r, i) => <KV key={i} k={r.label} v={r.value} vFg={r.fg} kFg={kFg} />)}
+    <View style={[{ gap, paddingTop: top ? 10 : 0, borderTopWidth: top ? 1 : 0, borderTopColor: c.ink08 }, style]}>
+      {rows.map((r, i) => <KV key={i} k={r.label} v={r.value} vFg={r.fg} />)}
     </View>
   );
 }
 
 export function Hair({ style }: { style?: StyleProp<ViewStyle> }) {
-  return <View style={[{ height: 1, backgroundColor: C.hair06 }, style]} />;
+  const { c } = useTheme();
+  return <View style={[{ height: 1, backgroundColor: c.ink08 }, style]} />;
 }
 
-/** Píldora con hairline: filtros, tabs y marcas pequeñas. */
+/** Punto de estado (pill): live, success, warning, error o cualquier color. */
+export function Dot({ color, size = 8 }: { color: string; size?: number }) {
+  return <View style={{ width: size, height: size, borderRadius: RADIUS.pill, backgroundColor: color }} />;
+}
+
+/** Chip rectangular (radio control): filtros, escenarios, marcas. `on` = fondo ink, texto página. */
 export type ChipProps = {
-  label: string; fg?: string; bd?: string; bg?: string; onPress?: () => void; mono?: boolean; dashed?: boolean;
-  s?: number; py?: number; px?: number; w?: number; style?: StyleProp<ViewStyle>; accessibilityLabel?: string;
+  label: string; on?: boolean; fg?: string; bd?: string; bg?: string; onPress?: () => void; mono?: boolean;
+  s?: number; py?: number; px?: number; style?: StyleProp<ViewStyle>; accessibilityLabel?: string;
 };
 
-export function Chip({ label, fg = C.dim, bd = C.ctl, bg = C.ctl, onPress, mono, dashed, s = 11, py = 8, px = 13, w = 600, style, accessibilityLabel }: ChipProps) {
-  const inner = <T w={mono ? 500 : w} s={s} lh={1} mono={mono} color={fg}>{label}</T>;
-  const box: ViewStyle = {
-    paddingVertical: py, paddingHorizontal: px, borderRadius: 999, borderWidth: 1, borderColor: bd, backgroundColor: bg,
-    alignItems: "center", justifyContent: "center", borderStyle: dashed ? "dashed" : "solid",
-  };
+export function Chip({ label, on, fg, bd, bg, onPress, mono, s = 11.5, py = 7, px = 11, style, accessibilityLabel }: ChipProps) {
+  const { c } = useTheme();
+  const colors = on ? { fg: c.onBtnPrimary, bd: c.btnPrimary, bg: c.btnPrimary } : { fg: fg ?? c.ink72, bd: bd ?? c.ink15, bg: bg ?? "transparent" };
+  const inner = <T w={mono ? 500 : 600} s={s} lh={1} mono={mono} color={colors.fg}>{label}</T>;
+  const box: ViewStyle = { paddingVertical: py, paddingHorizontal: px, borderRadius: RADIUS.control, borderWidth: 1, borderColor: colors.bd, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center" };
   if (onPress) return <Touch onPress={onPress} accessibilityLabel={accessibilityLabel} style={[box, style]}>{inner}</Touch>;
   return <View style={[box, style]}>{inner}</View>;
 }
 
-/** Avatar cuadrado con iniciales: fondo vioBg10, iniciales mono bold en violeta. */
-export function Avatar({ initials, size = 36, radius = 12, s = 11 }: { initials: string; size?: number; radius?: number; s?: number }) {
-  return (
-    <View style={{ width: size, height: size, borderRadius: radius, backgroundColor: C.vioBg10, alignItems: "center", justifyContent: "center" }}>
-      <T w={700} s={s} lh={1} mono color={C.vio}>{initials}</T>
-    </View>
-  );
-}
-
-/** Bloque oscuro del Handoff (TOTAL VALUE, AVAILABLE, CALIBRATION): ink, radio 22. */
-export function InkBlock({ children, pad = 18, gap, style }: { children?: ReactNode; pad?: number; gap?: number; style?: StyleProp<ViewStyle> }) {
-  return <View style={[{ backgroundColor: C.ink, borderRadius: 22, padding: pad, gap }, style]}>{children}</View>;
-}
-
-/** Baldosa interna de un InkBlock: #15182A, radio 14. */
-export function InkTile({ children, style }: { children?: ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[{ backgroundColor: C.tile, borderRadius: 14, padding: 12, flex: 1 }, style]}>{children}</View>;
-}
-
-/** Buscador del Handoff: pill de control con lupa. */
-export function SearchBox({ value, onChange, placeholder, accessibilityLabel }: { value: string; onChange: (v: string) => void; placeholder: string; accessibilityLabel: string }) {
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, borderRadius: 999, backgroundColor: C.ctl }}>
-      <Icon name="search" size={16} color={C.faint} />
-      <TextInput
-        value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={C.faint}
-        autoCapitalize="none" autoCorrect={false} accessibilityLabel={accessibilityLabel}
-        style={[textStyle(400, 15, { color: C.ink }), { flex: 1, paddingVertical: 12 }]}
-      />
-    </View>
-  );
-}
-
 // ---------------------------------------------------------------------------
-// Botones.
+// Botones. Alturas de Relayer: md 40 (py 11), lg 46 (py 14).
 export type BtnProps = {
   label: string; onPress?: () => void; variant?: BtnVariant; arrow?: boolean; icon?: IconName; s?: number; py?: number;
-  style?: StyleProp<ViewStyle>; disabled?: boolean; fg?: string; bd?: string; flex?: number; busy?: boolean; accessibilityLabel?: string;
+  style?: StyleProp<ViewStyle>; disabled?: boolean; flex?: number; busy?: boolean; accessibilityLabel?: string;
 };
 
-/** `busy` muestra el label atenuado (el spinner lo pone la pantalla si quiere); `disabled` baja opacidad. */
-export function Btn({ label, onPress, variant = "outline", arrow, icon, s = 15, py = 14, style, disabled, fg, bd, flex, busy, accessibilityLabel }: BtnProps) {
-  const v = BTN_VARIANTS[variant];
-  const color = fg ?? v.fg;
+/** `busy` muestra un spinner en lugar del icono y bloquea el toque; `disabled` baja opacidad. */
+export function Btn({ label, onPress, variant = "control", arrow, icon, s = 14, py = 14, style, disabled, flex, busy, accessibilityLabel }: BtnProps) {
+  const { c } = useTheme();
+  const v = btnVariants(c)[variant];
   return (
     <Touch
       onPress={onPress}
@@ -174,37 +158,31 @@ export function Btn({ label, onPress, variant = "outline", arrow, icon, s = 15, 
       accessibilityLabel={accessibilityLabel}
       style={[{
         flex, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-        paddingVertical: py, paddingHorizontal: 18, borderRadius: 999,
-        borderWidth: 1, borderColor: bd ?? v.bd, backgroundColor: v.bg,
-        borderStyle: variant === "dashed" ? "dashed" : "solid",
-        opacity: disabled ? 0.45 : busy ? 0.8 : 1,
+        paddingVertical: py, paddingHorizontal: 18, borderRadius: RADIUS.control,
+        borderWidth: 1, borderColor: v.bd, backgroundColor: v.bg, opacity: disabled ? 0.45 : 1,
       }, style]}
     >
-      {icon ? <Icon name={icon} size={16} color={color} /> : null}
-      <T w={v.w} s={s} lh={1} mono={variant === "dashed"} color={color}>{label}</T>
-      {arrow ? <Icon name="arrow" size={15} color={color} /> : null}
+      {busy ? <ActivityIndicator size="small" color={v.fg} /> : icon ? <Icon name={icon} size={16} color={v.fg} /> : null}
+      <T w={v.w} s={s} lh={1} color={v.fg}>{label}</T>
+      {arrow && !busy ? <Icon name="arrow" size={15} color={v.fg} /> : null}
     </Touch>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Selectores.
-export type SegmentedProps<K extends string> = {
-  options: readonly (readonly [K, string])[]; value: K; onChange: (k: K) => void;
-  /** Colores del segmento activo por clave (Long lima / Short rosa). Sin `tone`, activo = ink + onInk. */
-  tone?: (k: K) => { bg: string; fg: string };
-};
+// Selectores y formularios.
+export type SegmentedProps<K extends string> = { options: readonly (readonly [K, string])[]; value: K; onChange: (k: K) => void };
 
-/** Control segmentado con pulgar translúcido (tabs de portfolio, buy/sell, long/short). */
-export function Segmented<K extends string>({ options, value, onChange, tone }: SegmentedProps<K>) {
+export function Segmented<K extends string>({ options, value, onChange }: SegmentedProps<K>) {
+  const { c } = useTheme();
   return (
-    <View style={{ flexDirection: "row", gap: 4, padding: 4, borderRadius: 999, backgroundColor: C.ctl }}>
+    <View style={{ flexDirection: "row", gap: 2, padding: 2, borderRadius: RADIUS.control, backgroundColor: c.sub, borderWidth: 1, borderColor: c.ink08 }}>
       {options.map(([k, label]) => {
         const on = value === k;
-        const t = on && tone ? tone(k) : { bg: on ? C.ink : "transparent", fg: on ? C.onInk : C.dim };
         return (
-          <Touch key={k} onPress={() => onChange(k)} accessibilityLabel={`segment-${k}`} style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 6, borderRadius: 999, backgroundColor: t.bg, alignItems: "center" }}>
-            <T w={600} s={13} lh={1} color={t.fg}>{label}</T>
+          <Touch key={k} onPress={() => onChange(k)} accessibilityLabel={`segment-${k}`}
+            style={{ flex: 1, paddingVertical: 9, paddingHorizontal: 6, borderRadius: RADIUS.control, backgroundColor: on ? c.card : "transparent", borderWidth: 1, borderColor: on ? c.ink15 : "transparent", alignItems: "center" }}>
+            <T w={600} s={13} lh={1} color={on ? c.inkStrong : c.ink55}>{label}</T>
           </Touch>
         );
       })}
@@ -212,97 +190,111 @@ export function Segmented<K extends string>({ options, value, onChange, tone }: 
   );
 }
 
-/** Polilínea sobre un viewBox 0..100 con trazo que no escala (Sparkline del prototipo). `points` viene de `sparkPoints`. */
-export function Sparkline({ points, stroke = C.spark, style }: { points: readonly (readonly [number, number])[]; stroke?: string; style?: StyleProp<ViewStyle> }) {
-  const pts = points.map(([x, y]) => `${x},${y}`).join(" ");
+/** Input de Relayer: etiqueta eyebrow + caja input con hairline ink15 (alto lg 46). */
+export function Field({ label, hint, error, right, ...input }: { label: string; hint?: string; error?: string; right?: ReactNode } & TextInputProps) {
+  const { c } = useTheme();
   return (
-    <Svg viewBox="0 0 100 100" preserveAspectRatio="none" style={[{ width: "100%", height: "100%" }, style]}>
-      <Polyline points={pts} fill="none" stroke={stroke} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
-    </Svg>
-  );
-}
-
-/** Par «−»/«+» con el valor mono en medio (hoja de la matriz). `width` fija el ancho; sin él, flex 1. */
-export function Stepper({ value, onDown, onUp, width, accessibilityLabel }: { value: string; onDown: () => void; onUp: () => void; width?: number; accessibilityLabel: string }) {
-  const btn: ViewStyle = { width: 26, height: 26, borderRadius: 8, borderWidth: 1, borderColor: C.hair22, alignItems: "center", justifyContent: "center" };
-  return (
-    <View style={{ flex: width ? 0 : 1, width, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 7, paddingHorizontal: 9, borderRadius: 10, borderWidth: 1, borderColor: C.hair }}>
-      <Touch onPress={onDown} style={btn} accessibilityLabel={`${accessibilityLabel}-down`}><T w={700} s={13} lh={1}>−</T></Touch>
-      <T w={500} s={10} lh={1} mono color={C.dim}>{value}</T>
-      <Touch onPress={onUp} style={btn} accessibilityLabel={`${accessibilityLabel}-up`}><T w={700} s={13} lh={1}>+</T></Touch>
+    <View style={{ gap: 6 }}>
+      <Tag>{label}</Tag>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, borderRadius: RADIUS.control, borderWidth: 1, borderColor: error ? c.error : c.ink15, backgroundColor: c.input }}>
+        <TextInput placeholderTextColor={c.ink40} autoCorrect={false} {...input} style={[textStyle(500, 15, { color: c.inkStrong }), { flex: 1, paddingVertical: 12 }, input.style]} />
+        {right}
+      </View>
+      {error ? <T w={400} s={12} lh={1.4} color={c.error}>{error}</T> : hint ? <T w={400} s={12} lh={1.4} color={c.ink55}>{hint}</T> : null}
     </View>
   );
 }
 
-/** Barra de progreso fina (graduación). `pct` en 0..1. */
-export function Bar({ pct, h = 8, color = C.limeInk }: { pct: number; h?: number; color?: string }) {
+/** Casilla con texto (términos). */
+export function Check({ checked, onChange, children, accessibilityLabel }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode; accessibilityLabel: string }) {
+  const { c } = useTheme();
   return (
-    <View style={{ flex: 1, height: h, borderRadius: 999, backgroundColor: C.empty, overflow: "hidden" }}>
-      <View style={{ width: `${Math.max(0, Math.min(1, pct)) * 100}%`, height: "100%", backgroundColor: color }} />
-    </View>
+    <Touch onPress={() => onChange(!checked)} accessibilityLabel={accessibilityLabel} style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+      <View style={{ width: 22, height: 22, borderRadius: RADIUS.control, borderWidth: 1, borderColor: checked ? c.btnPrimary : c.ink25, backgroundColor: checked ? c.btnPrimary : c.input, alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+        {checked ? <Icon name="check" size={14} color={c.onBtnPrimary} strokeWidth={2.4} /> : null}
+      </View>
+      <View style={{ flex: 1 }}>{children}</View>
+    </Touch>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Avisos y estados.
-export function Warn({ title, body, children }: { title: string; body?: string; children?: ReactNode }) {
+/** Lista numerada (Activar: 3 pasos; Pedir tarjeta: condiciones). */
+export function Steps({ items }: { items: readonly { title: string; body: string }[] }) {
+  const { c } = useTheme();
   return (
-    <Card bd="transparent" bg={C.warnBg} pad={14} radius={16} gap={6}>
-      <T w={700} s={12} lh={1.3} color={C.warn}>{title}</T>
-      {body ? <T w={400} s={11.5} lh={1.45} color={C.dim}>{body}</T> : null}
-      {children}
-    </Card>
-  );
-}
-
-export type Tone = { bd: string; bg: string; fg: string };
-
-/** Tarjeta de estado (fases de read / de orden): borde tintado + tag + título + cuerpo. */
-export function StatusCard({ tag, title, body, tone, big, children }: { tag: string; title: string; body?: string; tone: Tone; big?: boolean; children?: ReactNode }) {
-  return (
-    <Card bd={tone.bd} bg={tone.bg} pad={big ? 15 : 13} radius={20} gap={big ? 7 : 6}>
-      <Tag color={tone.fg}>{tag}</Tag>
-      {big
-        ? <T w={700} s={20} lh={1.15} ls={-0.02} display>{title}</T>
-        : <T w={700} s={13.5} lh={1.3}>{title}</T>}
-      {body ? <T w={400} s={11.5} lh={1.45} color={C.dim}>{body}</T> : null}
-      {children}
-    </Card>
-  );
-}
-
-export function Page({ children, style, gap = 11, top = 14 }: { children?: ReactNode; style?: StyleProp<ViewStyle>; gap?: number; top?: number }) {
-  return <View style={[{ paddingTop: top, paddingHorizontal: 18, paddingBottom: 20, gap }, style]}>{children}</View>;
-}
-
-// ---------------------------------------------------------------------------
-// Conservadas de la app (no existen en el diseño), re-vestidas.
-export type StatItem = { label: string; value: string; fg?: string };
-
-export function StatGrid({ items }: { items: StatItem[] }) {
-  return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", borderWidth: 1, borderColor: C.hair06, borderRadius: 16, overflow: "hidden" }}>
+    <View style={{ gap: 12 }}>
       {items.map((it, i) => (
-        <View key={i} style={{ width: "50%", backgroundColor: C.card, padding: 12, paddingHorizontal: 13, borderColor: C.hair06, borderTopWidth: i >= 2 ? 1 : 0, borderLeftWidth: i % 2 === 1 ? 1 : 0 }}>
-          <Tag>{it.label.toUpperCase()}</Tag>
-          <T w={500} s={13} mono color={it.fg ?? C.ink} style={{ marginTop: 6 }}>{it.value}</T>
+        <View key={i} style={{ flexDirection: "row", gap: 12 }}>
+          <View style={{ width: 26, height: 26, borderRadius: RADIUS.control, backgroundColor: c.sub, borderWidth: 1, borderColor: c.ink08, alignItems: "center", justifyContent: "center" }}>
+            <T w={500} s={11} lh={1} mono color={c.ink72}>{String(i + 1).padStart(2, "0")}</T>
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <T w={600} s={14} lh={1.3}>{it.title}</T>
+            <T w={400} s={13} lh={1.45} color={c.ink72}>{it.body}</T>
+          </View>
         </View>
       ))}
     </View>
   );
 }
 
-export function EmptyPanel({ children }: { children: ReactNode }) {
-  return (
-    <View style={{ padding: 26, paddingHorizontal: 18, borderWidth: 1, borderColor: C.hair22, borderStyle: "dashed", borderRadius: 20, alignItems: "center" }}>
-      {children}
-    </View>
+/** Fila de lista: icono o punto, título + subtítulo, valor a la derecha, chevron si navega. */
+export function Row({ icon, dot, title, sub, right, rightFg, onPress, accessibilityLabel }: { icon?: IconName; dot?: string; title: string; sub?: string; right?: string; rightFg?: string; onPress?: () => void; accessibilityLabel?: string }) {
+  const { c } = useTheme();
+  const inner = (
+    <>
+      {icon ? <View style={{ width: 36, height: 36, borderRadius: RADIUS.control, backgroundColor: c.sub, alignItems: "center", justifyContent: "center" }}><Icon name={icon} size={17} color={c.ink72} /></View> : null}
+      {dot ? <Dot color={dot} /> : null}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <T w={600} s={14} lh={1.25} numberOfLines={1}>{title}</T>
+        {sub ? <T w={400} s={12} lh={1.3} color={c.ink55} numberOfLines={1} style={{ marginTop: 3 }}>{sub}</T> : null}
+      </View>
+      {right ? <T w={500} s={13} lh={1} mono color={rightFg ?? c.inkStrong}>{right}</T> : null}
+      {onPress ? <Icon name="chevron" size={16} color={c.ink40} /> : null}
+    </>
   );
+  const box: ViewStyle = { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: RADIUS.card, borderWidth: 1, borderColor: c.ink08, backgroundColor: c.card };
+  return onPress ? <Touch onPress={onPress} accessibilityLabel={accessibilityLabel} style={box}>{inner}</Touch> : <View style={box}>{inner}</View>;
 }
 
 // ---------------------------------------------------------------------------
-// Skeletons (spec mobile-loading D1/D4). Un solo pulso compartido: `PULSE` vive en el módulo y el loop
-// arranca con el primer skeleton montado y se detiene con el último (refcount), aunque haya 20 bloques.
+// Avisos y estados.
+export function Warn({ title, body, tone: name = "warning", children }: { title: string; body?: string; tone?: ToneName; children?: ReactNode }) {
+  const { c } = useTheme();
+  const t = tone(c, name);
+  return (
+    <Card bd={t.bd} bg={t.bg} pad={14} gap={6}>
+      <T w={600} s={13} lh={1.3} color={t.fg}>{title}</T>
+      {body ? <T w={400} s={12.5} lh={1.45} color={c.inkBody}>{body}</T> : null}
+      {children}
+    </Card>
+  );
+}
+
+/** Tarjeta de estado (KYC, endorsement, verificación, recibo): eyebrow + título + cuerpo en el tono. */
+export function StatusCard({ tag, title, body, tone: name, busy, children }: { tag: string; title: string; body?: string; tone: ToneName; busy?: boolean; children?: ReactNode }) {
+  const { c } = useTheme();
+  const t = tone(c, name);
+  return (
+    <Card bd={t.bd} bg={t.bg} pad={16} gap={8}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        {busy ? <ActivityIndicator size="small" color={t.fg} /> : <Dot color={t.fg} />}
+        <Tag color={t.fg}>{tag}</Tag>
+      </View>
+      <T w={600} s={18} lh={1.2} ls={-0.01}>{title}</T>
+      {body ? <T w={400} s={13} lh={1.5} color={c.inkBody}>{body}</T> : null}
+      {children}
+    </Card>
+  );
+}
+
+/** Cuerpo de pantalla: padding horizontal 18 y gap. (El `Page` de ruta vive en Page.tsx.) */
+export function Body({ children, style, gap = 12, top = 12 }: { children?: ReactNode; style?: StyleProp<ViewStyle>; gap?: number; top?: number }) {
+  return <View style={[{ paddingTop: top, paddingHorizontal: 18, paddingBottom: 24, gap }, style]}>{children}</View>;
+}
+
+// ---------------------------------------------------------------------------
+// Skeletons (heredados): un solo pulso compartido con refcount.
 const PULSE = new Animated.Value(1);
 let pulseLoop: Animated.CompositeAnimation | null = null;
 let pulseMounted = 0;
@@ -316,54 +308,31 @@ function usePulse(): Animated.Value {
       ]));
       pulseLoop.start();
     }
-    return () => {
-      if (--pulseMounted === 0) { pulseLoop?.stop(); pulseLoop = null; PULSE.setValue(1); }
-    };
+    return () => { if (--pulseMounted === 0) { pulseLoop?.stop(); pulseLoop = null; PULSE.setValue(1); } };
   }, []);
   return PULSE;
 }
 
-type SkeletonProps = { w?: number | `${number}%`; h?: number; r?: number; style?: StyleProp<ViewStyle> };
+type SkeletonProps = { w?: number | `${number}%`; h?: number; style?: StyleProp<ViewStyle> };
 
-function SkeletonBlock({ w = "100%", h = 12, r = 8, style }: SkeletonProps) {
+function SkeletonBlock({ w = "100%", h = 12, style }: SkeletonProps) {
+  const { c } = useTheme();
   const opacity = usePulse();
-  return <Animated.View style={[{ width: w, height: h, borderRadius: r, backgroundColor: C.empty, opacity }, style]} />;
+  return <Animated.View style={[{ width: w, height: h, borderRadius: RADIUS.control, backgroundColor: c.ink08, opacity }, style]} />;
 }
 
-/** Una línea de texto de tamaño `s` (alto ≈ 1.1·s). */
-function SkeletonLine({ s = 13, w = "60%" }: { s?: number; w?: number | `${number}%` }) {
-  return <SkeletonBlock h={Math.round(s * 1.1)} w={w} r={6} />;
-}
-
-/** Card con `lines` líneas; `big` pone la primera a 30 px (una cifra grande, como los saldos). */
-function SkeletonCard({ lines = 2, big }: { lines?: number; big?: boolean }) {
-  const widths: (number | `${number}%`)[] = ["45%", "70%", "55%", "62%"];
-  return (
-    <Card pad={big ? 15 : 13} gap={9}>
-      {Array.from({ length: lines }, (_, i) => <SkeletonBlock key={i} h={i === 0 && big ? 30 : 12} w={widths[i % widths.length]} />)}
-    </Card>
-  );
-}
-
-/** Fila de lista: título + subtítulo a la izquierda, valor + variación a la derecha (como `MarketsList`). */
 function SkeletonRow() {
   return (
     <Card pad={13} style={{ flexDirection: "row", alignItems: "center", gap: 11 }}>
-      <View style={{ flex: 1, gap: 6 }}>
-        <SkeletonBlock h={14} w="30%" />
-        <SkeletonBlock h={11} w="55%" />
-      </View>
-      <View style={{ alignItems: "flex-end", gap: 6 }}>
-        <SkeletonBlock h={13} w={72} />
-        <SkeletonBlock h={10} w={44} />
-      </View>
+      <View style={{ flex: 1, gap: 6 }}><SkeletonBlock h={14} w="40%" /><SkeletonBlock h={11} w="60%" /></View>
+      <SkeletonBlock h={13} w={72} />
     </Card>
   );
 }
 
-export const Skeleton = Object.assign(SkeletonBlock, { Line: SkeletonLine, Card: SkeletonCard, Row: SkeletonRow });
+export const Skeleton = Object.assign(SkeletonBlock, { Row: SkeletonRow });
 
-/** El contenido entra con un fade de 150 ms al montarse (skeleton → dato). Nada más (D4). */
+/** El contenido entra con un fade de 150 ms (skeleton → dato). */
 export function Reveal({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => { Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start(); }, [opacity]);

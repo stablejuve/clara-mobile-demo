@@ -1,90 +1,64 @@
 import type { TextStyle } from "react-native";
 
-// Tokens del "Pickler Mobile Handoff" (Claude Design, jjesusaf/pickler-mobile@1808d5b, design/), spec mobile-light D3.
-// Los nombres de mobile-hifi se conservan cuando el rol es el mismo (ink = texto principal, card = superficie);
-// sólo cambia el valor. Regla: la lima es relleno; como texto o borde va limeInk / limeBd.
-export const C = {
-  ink: "#0B0D1A",
-  dim: "#5A5F78",
-  faint: "#6B7186",
+// Tokens de Relayer (relayer-core apps/web/app/tokens.css, paleta v5 Carbon/Petrol/Turquoise/Sage/Peach/Coral), spec D4.
+// Dos paletas con los mismos nombres semánticos: Paper (light) y Carbon (dark). Las pantallas leen `useTheme().c`; aquí viven
+// los únicos hex de la UI. Reglas: `live` es un punto, nunca texto; `ink40` sólo placeholders y deshabilitados.
 
-  bg: "#FFFFFF",
-  card: "#F5F6FA",
-  ctl: "#F1F2F7",
-  tile: "#15182A",
-  onInk: "#FFFFFF",
-  onInkDim: "#9AA0B8",
-  onInkSoft: "#C7CAD8",
+export type Scheme = "light" | "dark";
+export type ThemeOverride = Scheme | "system";
 
-  hair: "rgba(11,13,26,0.1)",
-  hair2: "rgba(11,13,26,0.16)",
-  hair06: "rgba(11,13,26,0.06)",
-  hair08: "rgba(11,13,26,0.08)",
-  hair10: "rgba(11,13,26,0.10)",
-  hair12: "rgba(11,13,26,0.12)",
-  hair14: "rgba(11,13,26,0.14)",
-  hair18: "rgba(11,13,26,0.18)",
-  hair22: "rgba(11,13,26,0.22)",
-  hair28: "rgba(11,13,26,0.28)",
-  hair34: "rgba(11,13,26,0.34)",
+/** Identidad v5, independiente del esquema (arte de tarjeta, marca, puntos). */
+export const RL = { carbon: "#121819", petrol: "#00594F", turq: "#72BDB1", sage: "#B5C8AA", peach: "#F0B395", coral: "#D87968" } as const;
 
-  card04: "#F8F9FC",
-  card09: "#EEF0F5",
-  card10: "#E9EBF2",
-  deep: "#F1F2F7",
-  deep50: "#FFFFFF",
-  deep60: "#F1F2F7",
-  onDeep: "#FFFFFF",
-  slab: "#F1F2F7",
+/** Forma: Relayer es de esquinas rectas (2 px); el pill sólo para puntos y avatares. */
+export const RADIUS = { card: 2, control: 2, pill: 9999 } as const;
 
-  vio: "#5B3CE0",
-  vioSolid: "#5B3CE0",
-  vioBd: "rgba(91,60,224,0.5)",
-  vioBd45: "rgba(91,60,224,0.45)",
-  vioBd40: "rgba(91,60,224,0.4)",
-  vioBg: "#EEEAFF",
-  vioBg10: "#F1EEFF",
-  vioBg08: "#F3F0FF",
-  vioBg07: "#F5F2FF",
-  vioBg06: "#F6F4FF",
-  /** Violeta claro del Handoff como texto **sobre `vio`** (card THE QUESTION de Read, D14). */
-  onVio: "#D9D0FF",
+export type Palette = {
+  page: string; canvas: string; card: string; elev: string; input: string; sub: string;
+  inkStrong: string; inkBody: string; ink72: string; ink55: string; ink40: string; ink25: string; ink15: string; ink08: string; ink04: string;
+  brand: string; brandH: string; onBrand: string; live: string; settled: string;
+  info: string; success: string; warning: string; error: string;
+  backdrop: string;
+  btnPrimary: string; btnPrimaryH: string; onBtnPrimary: string;
+};
 
-  lime: "#C8F03A",
-  /** Lima como texto o icono **sobre ink** (bloques oscuros, tarjeta de passkey): ahí sí se lee. */
-  limeOnInk: "#C8F03A",
-  onLime: "#0B0D1A",
-  limeInk: "#3F6B00",
-  limeBd: "rgba(63,107,0,0.35)",
-  limeBd40: "rgba(63,107,0,0.3)",
-  limeBg: "#F3F8E0",
-  limeBg14: "#EDF7CE",
-  limeBg06: "#F3F8E0",
+export const LIGHT: Palette = {
+  page: "#FBFBFA", canvas: "#F5F5F4", card: "#FFFFFF", elev: "#FFFFFF", input: "#FFFFFF", sub: "#F1F1F0",
+  inkStrong: "#121819", inkBody: "#24292B",
+  ink72: "rgba(20,25,27,0.72)", ink55: "rgba(20,25,27,0.55)", ink40: "rgba(20,25,27,0.40)", ink25: "rgba(20,25,27,0.24)",
+  ink15: "rgba(20,25,27,0.12)", ink08: "rgba(20,25,27,0.07)", ink04: "rgba(20,25,27,0.035)",
+  brand: "#00594F", brandH: "#00473F", onBrand: "#FBFBF9", live: "#00C4CC", settled: "#3DA083",
+  info: "#3D5A7B", success: "#2F8E5C", warning: "#B57100", error: "#8B2940",
+  backdrop: "rgba(20,25,27,0.32)",
+  btnPrimary: "#121819", btnPrimaryH: "#2A3536", onBtnPrimary: "#FFFFFF",
+};
 
-  up: "#2E7D32",
-  down: "#C62C62",
-  short: "#FF5FA2",
-  downBd: "rgba(198,44,98,0.4)",
-  downBd45: "rgba(198,44,98,0.45)",
-  downBg: "#FDF0F5",
-  /** Pérdida como texto **sobre ink** (resumen de la orden): `down` no se lee sobre #0B0D1A. */
-  downOnInk: "#FF8FB8",
-  /** Violeta claro del Handoff **sobre ink** (baldosa BACKED de Portfolio): `vio` no se lee sobre #0B0D1A. */
-  vioOnInk: "#B9A5FF",
-  warn: "#8A6200",
-  pending: "#FFC93F",
-  warnBd: "rgba(255,201,63,0.6)",
-  warnBg: "#FBF0D4",
-  blue: "#2F55C8",
-  blueBg: "#EAF0FF",
-  spark: "#B9BED0",
-  disabled: "#C9CDDB",
-  empty: "#E2E5EE",
-  dotOff: "#D3D6E2",
-  agentDot: "#9B7BFF",
-} as const;
+export const DARK: Palette = {
+  page: "#121819", canvas: "#0D1213", card: "#1A2223", elev: "#222B2C", input: "#121819", sub: "#0F1516",
+  inkStrong: "#FFFFFF", inkBody: "#E6ECEB",
+  ink72: "rgba(230,236,235,0.74)", ink55: "rgba(230,236,235,0.58)", ink40: "rgba(230,236,235,0.40)", ink25: "rgba(230,236,235,0.24)",
+  ink15: "rgba(230,236,235,0.12)", ink08: "rgba(230,236,235,0.07)", ink04: "rgba(230,236,235,0.04)",
+  brand: "#72BDB1", brandH: "#8CCBC1", onBrand: "#121819", live: "#33D6DD", settled: "#66C8A8",
+  info: "#8FA8C4", success: "#66C8A8", warning: "#E8B25C", error: "#D87968",
+  backdrop: "rgba(0,0,0,0.65)",
+  btnPrimary: "#72BDB1", btnPrimaryH: "#8FCCC2", onBtnPrimary: "#121819",
+};
 
-// Familias: las de @expo-google-fonts/* y la instancia local de Archivo (Task 0, assets/fonts).
+export const PALETTES: Record<Scheme, Palette> = { light: LIGHT, dark: DARK };
+
+/** Esquema efectivo: el override manual gana; "system" sigue al teléfono (sin dato o "unspecified" → light). */
+export function resolveScheme(override: ThemeOverride, system: string | null | undefined): Scheme {
+  if (override !== "system") return override;
+  return system === "dark" ? "dark" : "light";
+}
+
+/** "#RRGGBB" → "rgba(r,g,b,a)": tintes de fondo de avisos, chips y tarjetas (warning al 12 %, etc.). */
+export function alpha(hex: string, a: number): string {
+  const h = hex.replace("#", "");
+  return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`;
+}
+
+// Familias cargadas en App.tsx: Instrument Sans (cuerpo) y JetBrains Mono (cifras, etiquetas). Archivo (display web) entra después.
 export const F = {
   r: "InstrumentSans_400Regular",
   m: "InstrumentSans_500Medium",
@@ -95,11 +69,9 @@ export const F = {
   monoB: "JetBrainsMono_700Bold",
 } as const;
 
-export type FontKind = "mono" | "display";
+export type FontKind = "mono";
 
-/** Peso numérico del diseño → familia cargada. Display tiene un solo corte (Archivo 700 · wdth 112). */
 export function fam(weight: number, kind?: FontKind): string {
-  if (kind === "display") return F.b;
   if (kind === "mono") return weight >= 700 ? F.monoB : weight >= 500 ? F.monoM : F.mono;
   if (weight >= 700) return F.b;
   if (weight >= 600) return F.sb;
@@ -107,23 +79,13 @@ export function fam(weight: number, kind?: FontKind): string {
   return F.r;
 }
 
-export type TypeOpts = { lh?: number; ls?: number; mono?: boolean; display?: boolean; color?: string };
+export type TypeOpts = { lh?: number; ls?: number; mono?: boolean; color?: string };
 
-/** `font: <weight> <size>/<lh> <family>` del diseño. `ls` en em, convertido a px. */
-export function textStyle(weight: number, size: number, { lh, ls = 0, mono = false, display = false, color }: TypeOpts = {}): TextStyle {
-  const kind: FontKind | undefined = display ? "display" : mono ? "mono" : undefined;
-  const style: TextStyle = { fontFamily: fam(weight, kind), fontSize: size, color: color ?? C.ink };
+/** `font: <weight> <size>/<lh> <family>`; `ls` en em → px. Sin `color` no pone color (lo pone `T` con la paleta). */
+export function textStyle(weight: number, size: number, { lh, ls = 0, mono = false, color }: TypeOpts = {}): TextStyle {
+  const style: TextStyle = { fontFamily: fam(weight, mono ? "mono" : undefined), fontSize: size };
   if (lh) style.lineHeight = Math.round(size * lh);
   if (ls) style.letterSpacing = +(size * ls).toFixed(2);
+  if (color) style.color = color;
   return style;
 }
-
-export type Pill = { bd: string; bg: string; fg: string };
-
-/** pill(on): chip de filtro del Handoff — activo ink/blanco, inactivo control/dim. */
-export function pill(on: boolean): Pill {
-  return on ? { bd: C.ink, bg: C.ink, fg: C.onInk } : { bd: C.ctl, bg: C.ctl, fg: C.dim };
-}
-
-/** Color del icono y la etiqueta de la pestaña activa (barra hi-fi del Handoff, spec D2). */
-export const TAB_TINT = { markets: "#3F6B00", agents: "#5B3CE0", portfolio: "#8A6200", wallet: "#C62C62" } as const;
