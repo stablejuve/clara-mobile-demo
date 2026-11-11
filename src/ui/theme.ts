@@ -93,14 +93,13 @@ export const F = {
   mono: "JetBrainsMono_400Regular",
   monoM: "JetBrainsMono_500Medium",
   monoB: "JetBrainsMono_700Bold",
-  display: "ArchivoPickler-Bold",
 } as const;
 
 export type FontKind = "mono" | "display";
 
 /** Peso numérico del diseño → familia cargada. Display tiene un solo corte (Archivo 700 · wdth 112). */
 export function fam(weight: number, kind?: FontKind): string {
-  if (kind === "display") return F.display;
+  if (kind === "display") return F.b;
   if (kind === "mono") return weight >= 700 ? F.monoB : weight >= 500 ? F.monoM : F.mono;
   if (weight >= 700) return F.b;
   if (weight >= 600) return F.sb;

@@ -12,13 +12,13 @@ test("mono keeps three cuts; display is the single Archivo wdth 112 instance", (
   expect(fam(400, "mono")).toBe("JetBrainsMono_400Regular");
   expect(fam(500, "mono")).toBe("JetBrainsMono_500Medium");
   expect(fam(700, "mono")).toBe("JetBrainsMono_700Bold");
-  expect(fam(600, "display")).toBe("ArchivoPickler-Bold");
-  expect(fam(700, "display")).toBe("ArchivoPickler-Bold");
+  expect(fam(600, "display")).toBe("InstrumentSans_700Bold");
+  expect(fam(700, "display")).toBe("InstrumentSans_700Bold");
 });
 
 test("textStyle converts lh ratio and ls em to pixels", () => {
   expect(textStyle(700, 30, { display: true, lh: 1, ls: -0.045 })).toEqual({
-    fontFamily: "ArchivoPickler-Bold", fontSize: 30, color: C.ink, lineHeight: 30, letterSpacing: -1.35,
+    fontFamily: "InstrumentSans_700Bold", fontSize: 30, color: C.ink, lineHeight: 30, letterSpacing: -1.35,
   });
   expect(textStyle(500, 10, { mono: true, color: C.faint })).toEqual({ fontFamily: "JetBrainsMono_500Medium", fontSize: 10, color: C.faint });
 });
