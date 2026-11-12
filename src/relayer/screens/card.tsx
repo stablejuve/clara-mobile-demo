@@ -1,53 +1,171 @@
-import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { BlurView } from "expo-blur";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Platform, Pressable, View } from "react-native";
 import type { AppCtx } from "../../ctx";
 import { useAction } from "../../hooks/useAction";
 import { t } from "../../i18n/es";
-import { useForward } from "../../navigation/useForward";
-import { formatWhen } from "../format";
-import type { CardDetails } from "../types";
-import { Body, Btn, Card, KVList, Row, T, Warn } from "../../ui/primitives";
+import { useFaceIdHud } from "../../ui/FaceIdHud";
+import { EASE_IOS, Group, Ico, LARGE_GAP, PrimaryButton, Press, Spinner, Toggle } from "../../ui/kit";
+import { LargeTitleScreen } from "../../ui/LargeTitle";
+import { T } from "../../ui/primitives";
+import { F, RADIUS, RL } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
-import { CardArt } from "./cardRequest";
-import { PoweredBy } from "./PoweredBy";
+import type { CardDetails } from "../types";
 
-export function CardScreen({ nav, module }: AppCtx) {
-  const { focused, forward } = useForward();
+type Phase = "none" | "issuing" | "authorize" | "expired" | "reconfirming" | "active";
+const CARD_H = 228;
+
+/** Tarjeta Visa virtual: pedir → emitiendo → autorizar con Face ID → tarjeta que se voltea, se congela y va a la Wallet. */
+export function CardScreen({ module, faceId }: AppCtx) {
   const { c } = useTheme();
   const { state, api } = module;
-  const { busy, error, run } = useAction();
+  const { error, run } = useAction();
+  const hud = useFaceIdHud(faceId);
+  const card = state.card;
+  const phase: Phase =
+    card.status === "none" ? "none"
+      : card.status === "requested" || card.status === "endorsement_pending" ? "issuing"
+        : card.status === "endorsement_expired" ? (state.kyc.status === "under_review" ? "reconfirming" : "expired")
+          : card.authorizedAt === null ? "authorize" : "active";
   const [details, setDetails] = useState<CardDetails | null>(null);
-  const [revealed, setRevealed] = useState(false);
-  const frozen = state.card.status === "frozen";
-  useEffect(() => { if (focused && (state.card.status === "none" || state.card.status === "endorsement_expired")) forward("cardRequest"); }, [forward, state.card.status, nav, focused]);
-  // Los datos completos (PAN, CVV) se piden al api pero sólo se pintan con «Ver datos».
+  const [frozenUi, setFrozenUi] = useState(card.status === "frozen");
+  const [flipped, setFlipped] = useState(false);
+  // Si la tarjeta ya estaba activa al entrar no hay animación de entrada; si se activa aquí, sí.
+  const enter = useRef(new Animated.Value(phase === "active" ? 1 : 0)).current;
+  const flip = useRef(new Animated.Value(0)).current;
+  const frost = useRef(new Animated.Value(frozenUi ? 1 : 0)).current;
+
+  useEffect(() => { setFrozenUi(card.status === "frozen"); }, [card.status]);
   useEffect(() => {
-    let stale = false;
-    api.getCard().then((d) => { if (!stale) setDetails(d); }).catch(() => {});
-    return () => { stale = true; };
-  }, [api, state.card.status]);
-  const toggleFreeze = async () => { await run(() => api.freezeCard(!frozen)); };
+    if (phase !== "active") return;
+    void api.getCard().then(setDetails).catch(() => {});
+    Animated.parallel([
+      Animated.spring(enter, { toValue: 1, useNativeDriver: true, damping: 13, stiffness: 120 }),
+    ]).start();
+  }, [phase, api, enter]);
+  useEffect(() => { Animated.timing(flip, { toValue: flipped ? 1 : 0, duration: 650, easing: EASE_IOS, useNativeDriver: true }).start(); }, [flipped, flip]);
+  useEffect(() => { Animated.timing(frost, { toValue: frozenUi ? 1 : 0, duration: 450, useNativeDriver: true }).start(); }, [frozenUi, frost]);
+
+  const action = async () => {
+    if (phase === "none") await run(() => api.requestCard());
+    else if (phase === "authorize") { if (await hud.auth(t("rc.authorized"), t("rc.card.authReason"))) await run(() => api.authorizeCard()); }
+    else if (phase === "expired") await run(() => api.reconfirmKyc());
+  };
+  const toggleFreeze = (v: boolean) => {
+    setFrozenUi(v); setFlipped(false);
+    void run(() => api.freezeCard(v)).then((r) => { if (!r) setFrozenUi(!v); });
+  };
+  const addWallet = async () => {
+    if (await hud.auth(t("rc.added"), t("rc.card.walletReason"))) await run(() => api.addToWallet(Platform.OS === "android" ? "google" : "apple"));
+  };
+
+  const busy = phase === "issuing" || phase === "reconfirming";
+  const title = phase === "authorize" ? t("rc.card.authTitle") : phase === "expired" || phase === "reconfirming" ? t("rc.card.expiredTitle") : t("rc.card.title");
+  const sub = phase === "authorize" ? t("rc.card.authSub") : phase === "expired" || phase === "reconfirming" ? t("rc.card.expiredSub") : t("rc.card.sub");
+  const btn = phase === "authorize" ? t("rc.card.authBtn") : busy ? (phase === "issuing" ? t("rc.card.issuing") : t("rc.verifying")) : phase === "expired" ? t("rc.card.expiredBtn") : t("rc.card.request");
+  const walletName = Platform.OS === "android" ? "Google Wallet" : "Apple Wallet";
+  const frontRot = flip.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] });
+  const backRot = flip.interpolate({ inputRange: [0, 1], outputRange: ["180deg", "360deg"] });
+
   return (
-    <Body gap={14}>
-      <CardArt last4={state.card.last4} expiry={state.card.expiry} holder={details?.holder ?? "—"} number={revealed ? details?.number : null} cvv={revealed ? details?.cvv : null} dim={frozen} />
-      {frozen ? <Warn tone="info" title={t("card.frozenTitle")} body={t("card.frozenBody")} /> : null}
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <Btn label={revealed ? t("card.hide") : t("card.reveal")} icon={revealed ? "eyeOff" : "eye"} variant="control" flex={1} disabled={details === null} onPress={() => setRevealed((v) => !v)} accessibilityLabel="card-reveal" />
-        <Btn label={frozen ? t("card.unfreeze") : t("card.freeze")} icon={frozen ? "sparkles" : "freeze"} variant="control" flex={1} busy={busy} onPress={() => { void toggleFreeze(); }} accessibilityLabel="card-freeze" />
-      </View>
-      {error ? <T w={400} s={12.5} lh={1.4} color={c.error}>{error}</T> : null}
-      <Card><KVList rows={[
-        { label: t("card.kvStatus"), value: t(`card.status.${state.card.status}`) },
-        { label: t("card.kvAuthorized"), value: state.card.authorizedAt ? formatWhen(state.card.authorizedAt) : "—" },
-        { label: t("card.kvNetwork"), value: t("card.kvNetworkValue") },
-      ]} /></Card>
-      {state.pass.status === "added" ? (
-        <Row icon="phone" title={t("card.inWalletTitle")} sub={t(`addToWallet.provider.${state.pass.provider ?? "apple"}`)} right={t("common.ready")} rightFg={c.success} />
-      ) : (
-        <Btn label={t("card.addToPhone")} icon="phone" variant="primary" arrow disabled={frozen} onPress={() => nav("addToWallet")} accessibilityLabel="card-add-to-wallet" />
-      )}
-      <T w={400} s={12} lh={1.45} color={c.ink55}>{t("card.footnote")}</T>
-      <PoweredBy center />
-    </Body>
+    <View style={{ flex: 1 }}>
+      <LargeTitleScreen title={t("rc.card")} back={t("rc.name")} titleGap={24}>
+        <View style={{ paddingHorizontal: 20 }}>
+          {phase !== "active" ? (
+            <>
+              <View style={{ height: CARD_H, borderRadius: RADIUS.card, borderWidth: 1.5, borderStyle: "dashed", borderColor: c.ink25, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                {busy ? <Spinner size={18} color={c.ink40} /> : null}
+                <T w={500} s={15} color={c.ink40}>{phase === "issuing" ? t("rc.card.issuing") : t("rc.card.ghost")}</T>
+              </View>
+              <View style={{ paddingTop: 32, paddingHorizontal: 4, gap: 6 }}>
+                <T w={600} s={22} lh={1.2} ls={-0.015} color={c.inkStrong} style={{ textAlign: "center" }}>{title}</T>
+                <T w={400} s={15} lh={1.4} color={c.ink55} style={{ textAlign: "center" }}>{sub}</T>
+                {error ? <T w={400} s={14} lh={1.4} color={c.error} style={{ textAlign: "center", paddingTop: 6 }}>{error}</T> : null}
+              </View>
+              <PrimaryButton label={btn} size={16} dim={busy} icon={phase === "authorize" ? "faceId" : undefined} onPress={() => { void action(); }} style={{ marginTop: 28 }} accessibilityLabel="card-action" />
+            </>
+          ) : (
+            <>
+              <Animated.View style={{
+                opacity: enter,
+                transform: [
+                  { perspective: 1200 },
+                  { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) },
+                  { scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) },
+                  { rotateX: enter.interpolate({ inputRange: [0, 1], outputRange: ["18deg", "0deg"] }) },
+                ],
+              }}>
+                <Pressable onPress={() => { if (!frozenUi) setFlipped((f) => !f); }} accessibilityLabel="card-flip" style={{ height: CARD_H }}>
+                  <Animated.View style={[faceStyle, { transform: [{ perspective: 1200 }, { rotateY: frontRot }] }]}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                      <T w={600} s={17} ls={-0.01} color={RL.cream}>{t("rc.name")}</T>
+                      <View style={{ opacity: 0.7 }}><Ico name="nfc" size={22} color={RL.cream} sw={1.8} /></View>
+                    </View>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
+                      <T w={500} s={15} ls={0.08} mono color={RL.cream} style={{ opacity: 0.85 }}>•••• {details?.last4 ?? card.last4 ?? ""}</T>
+                      <T w={800} s={24} ls={0.02} color={RL.cream} style={{ fontFamily: F.xb }}>VISA</T>
+                    </View>
+                    <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: frost, alignItems: "center", justifyContent: "center" }}>
+                      <BlurView intensity={8} tint="light" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+                      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: RL.frost }} />
+                      <Ico name="freeze" size={44} color={RL.petrolDeep} sw={1.6} />
+                    </Animated.View>
+                  </Animated.View>
+                  <Animated.View style={[faceStyle, { transform: [{ perspective: 1200 }, { rotateY: backRot }] }]}>
+                    <T w={500} s={10.5} ls={0.08} mono color={RL.cream} style={{ opacity: 0.6 }}>{(details?.holder ?? "").toUpperCase()}</T>
+                    <T w={500} s={21} ls={0.06} mono color={RL.cream}>{details?.number ?? ""}</T>
+                    <View style={{ flexDirection: "row", gap: 36 }}>
+                      <CardField k={t("rc.card.expires")} v={details?.expiry ?? ""} />
+                      <CardField k="CVV" v={details?.cvv ?? ""} />
+                    </View>
+                  </Animated.View>
+                </Pressable>
+              </Animated.View>
+              <T w={400} s={13} color={c.ink40} style={{ textAlign: "center", paddingTop: 14, paddingBottom: 26 }}>
+                {frozenUi ? t("rc.card.frozen") : flipped ? t("rc.card.hide") : t("rc.card.show")}
+              </T>
+              <View style={{ gap: LARGE_GAP }}>
+                <Group>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 16, minHeight: 52 }}>
+                    <Ico name="freeze" size={20} color={c.ink55} sw={1.8} />
+                    <T w={500} s={16} color={c.inkStrong} style={{ flex: 1 }}>{t("rc.card.freeze")}</T>
+                    <Toggle on={frozenUi} onChange={toggleFreeze} accessibilityLabel="card-freeze" />
+                  </View>
+                </Group>
+                {state.pass.status === "added" ? (
+                  <View style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <Ico name="check" size={18} color={c.success} sw={2.4} />
+                    <T w={500} s={15} color={c.success}>{t("rc.card.inWallet", { wallet: walletName })}</T>
+                  </View>
+                ) : (
+                  <Press onPress={() => { void addWallet(); }} accessibilityLabel="card-add-wallet"
+                    style={{ height: 52, borderRadius: RADIUS.pill, backgroundColor: c.inkStrong, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                    <Ico name="wallet" size={20} color={c.page} sw={1.9} />
+                    <T w={600} s={16} color={c.page}>{t("rc.card.addWallet", { wallet: walletName })}</T>
+                  </Press>
+                )}
+                {error ? <T w={400} s={14} lh={1.4} color={c.error} style={{ textAlign: "center" }}>{error}</T> : null}
+              </View>
+            </>
+          )}
+        </View>
+      </LargeTitleScreen>
+      {hud.node}
+    </View>
   );
 }
+
+const faceStyle = {
+  position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0, backfaceVisibility: "hidden" as const,
+  borderRadius: RADIUS.card, backgroundColor: RL.petrolDeep, padding: 22, justifyContent: "space-between" as const, overflow: "hidden" as const,
+};
+
+function CardField({ k, v }: { k: string; v: string }) {
+  return (
+    <View style={{ gap: 4 }}>
+      <T w={500} s={9.5} ls={0.1} mono color={RL.cream} style={{ opacity: 0.55 }}>{k}</T>
+      <T w={500} s={15} mono color={RL.cream}>{v}</T>
+    </View>
+  );
+}
+

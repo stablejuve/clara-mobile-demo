@@ -1,9 +1,6 @@
 import { es, isKey, type Key, reasonCopy, t } from "../src/i18n/es";
 
-const SCREENS = [
-  "home", "benefits", "profile", "activate", "terms", "kyc", "kycPending", "kycRejected", "passkey", "balance", "deposit",
-  "cardRequest", "cardAuthorize", "card", "addToWallet", "bankAccount", "send", "sendReceipt", "settings", "demoPanel",
-] as const;
+const SCREENS = ["demoPanel"] as const;
 const ERROR_CODES = [
   "invalid_transition", "kyc_rejected", "cards_unavailable_region", "endorsement_expired", "send_failed", "bank_verification_failed",
   "bank_not_verified", "insufficient_balance", "below_minimum", "card_not_active", "clabe_invalid", "quote_expired", "passkey_cancelled", "not_found", "unknown",
@@ -34,6 +31,13 @@ test("t interpola {var} y deja las que no vienen", () => {
   expect(t("notify.depositTitle", { from: "Acme Beneficios" })).toBe("Te pagó Acme Beneficios");
   expect(t("send.quoteTtl", { s: 42 })).toBe("La cotización vence en 42 s");
   expect(t("bank.clabeHint", {})).toBe("{n} de 18 dígitos");
+});
+
+test("cada sección y cada campo del KYC tiene copy", () => {
+  for (const s of ["personal", "address", "id", "selfie", "usage"]) { expect(isKey(`kyc2.section.${s}`)).toBe(true); expect(isKey(`kyc2.intro.${s}`)).toBe(true); }
+  for (const f of ["firstName", "lastName", "email", "phone", "birthDate", "nationality", "streetLine1", "city", "subdivision", "postalCode", "idNumber", "expiration", "rfc", "front", "back", "selfie", "accountPurpose", "employmentStatus", "occupation", "monthlyPayments", "sourceOfFunds"]) {
+    expect(isKey(`kyc2.field.${f}`)).toBe(true);
+  }
 });
 
 test("reasonCopy traduce las razones conocidas y devuelve el código si no la conoce", () => {

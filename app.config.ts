@@ -2,8 +2,8 @@ import type { ExpoConfig } from "expo/config";
 
 // Demo del módulo Recibo dentro de "Acme Beneficios" (spec D4/D9). Sin servicios reales: nada de `extra` ni env.
 const bundleIdentifier = "fi.relayer.mobiledemo";
-const PAPER = "#FBFBFA";   // --surface-page light (src/ui/theme.ts LIGHT.page)
-const CARBON = "#121819";  // --surface-page dark  (DARK.page)
+const PAPER = "#F6F6F4";   // --surface-page light (src/ui/theme.ts LIGHT.page)
+const CARBON = "#1A1A19";  // --surface-page dark  (DARK.page)
 const faceIDPermission = "Acme Beneficios usa Face ID para crear y usar tu wallet de Recibo.";
 
 const config: ExpoConfig = {
@@ -33,6 +33,11 @@ const config: ExpoConfig = {
     ["expo-local-authentication", { faceIDPermission }],
     ["expo-build-properties", { ios: { deploymentTarget: "18.0" } }],
     ["expo-notifications", { enableBackgroundRemoteNotifications: false }],
+    ["expo-image-picker", {
+      cameraPermission: "Acme Beneficios usa la cámara para tomar la foto de tu identificación y tu selfie de verificación.",
+      photosPermission: "Acme Beneficios abre tus fotos para que subas tu identificación.",
+      microphonePermission: false,
+    }],
     ["expo-splash-screen", { image: "./assets/splash-mark.png", imageWidth: 140, resizeMode: "contain", backgroundColor: PAPER, dark: { backgroundColor: CARBON } }],
   ],
 };

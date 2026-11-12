@@ -1,4 +1,3 @@
-import type { ModuleScreen } from "../navigation/screens";
 import type { CardStatus, ModuleState, Movement, RelayerErrorCode, WalletProvider } from "./types";
 
 // Máquina de estados del módulo (spec «Máquina de estados»). Pura: cada transición devuelve un estado nuevo o un código.
@@ -168,17 +167,9 @@ export function deactivate(s: ModuleState): Result {
   return s.module === "off" ? fail("invalid_transition") : ok(INITIAL_STATE);
 }
 
-/** A qué pantalla lleva «Continuar» desde Activar según dónde se quedó el alta. */
-export function resumeScreen(s: ModuleState): ModuleScreen {
-  if (s.module === "off" || s.module === "terms_pending") return "terms";
-  if (s.module === "kyc") {
-    switch (s.kyc.status) {
-      case "under_review": return "kycPending";
-      case "rejected": return "kycRejected";
-      case "approved": return "passkey";
-      default: return "kyc";
-    }
-  }
-  if (s.module === "wallet_ready") return "passkey";
-  return "balance";
+/** Página de la hoja de alta donde se retoma (0 intro · 1 términos · 2 KYC · 3 wallet) según dónde se quedó el módulo. */
+export function onboardingPage(s: ModuleState): 0 | 1 | 2 | 3 {
+  if (s.module === "off" || s.module === "terms_pending") return 0;
+  if (s.module === "kyc") return s.kyc.status === "approved" ? 3 : 2;
+  return 3;
 }

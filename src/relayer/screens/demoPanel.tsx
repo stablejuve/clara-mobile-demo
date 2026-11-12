@@ -9,8 +9,10 @@ import { type Scenario, SCENARIOS } from "../mock/scenarios";
 import { formatCents, formatUsdc, parseAmount } from "../money";
 import { Body, Btn, Card, Chip, Field, KV, T, Tag, Warn } from "../../ui/primitives";
 import { useTheme } from "../../ui/ThemeProvider";
+import { LargeTitleScreen } from "../../ui/LargeTitle";
+import { EMPTY_DRAFT } from "../kyc";
 
-export function DemoPanelScreen({ nav, module, faceId, notifications }: AppCtx) {
+export function DemoPanelScreen({ nav, module, faceId, notifications, kyc }: AppCtx) {
   const { c } = useTheme();
   const { state, events, api } = module;
   const { busy, error, run } = useAction();
@@ -24,11 +26,12 @@ export function DemoPanelScreen({ nav, module, faceId, notifications }: AppCtx) 
   const reset = () => {
     Alert.alert(t("demo.resetTitle"), t("demo.resetBody"), [
       { text: t("common.cancel"), style: "cancel" },
-      { text: t("demo.resetConfirm"), style: "destructive", onPress: () => { void api.reset().then(() => nav("benefits")); } },
+      { text: t("demo.resetConfirm"), style: "destructive", onPress: () => { void api.reset().then(() => { kyc.setDraft(EMPTY_DRAFT); nav("benefits"); }); } },
     ]);
   };
   const rows = [["module", state.module], ["kyc", state.kyc.status], ["wallet", state.wallet.status], ["card", state.card.status], ["pass", state.pass.status], ["bank", state.bank.status], ["send", state.send.status]] as const;
   return (
+    <LargeTitleScreen title={t("screen.demoPanel.title")} back={t("rc.name")}>
     <Body gap={14}>
       <Warn tone="info" title={t("demo.title")} body={t("demo.body")} />
       <Tag>{t("demo.scenarioTag")}</Tag>
@@ -63,5 +66,6 @@ export function DemoPanelScreen({ nav, module, faceId, notifications }: AppCtx) 
       <Btn label={t("demo.reset")} icon="bug" variant="danger" onPress={reset} accessibilityLabel="demo-reset" />
       <Btn label={t("demo.goBenefits")} variant="ghost" onPress={() => nav("benefits")} />
     </Body>
+    </LargeTitleScreen>
   );
 }

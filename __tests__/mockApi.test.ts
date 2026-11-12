@@ -1,3 +1,4 @@
+import { EMPTY_DRAFT, fillSample, KYC_SECTIONS, toSubmission } from "../src/relayer/kyc";
 import { bankFor, clabeValid } from "../src/relayer/clabe";
 import { createMockApi, type MockApi } from "../src/relayer/mock/mockApi";
 import { DEFAULT_DEPOSIT } from "../src/relayer/mock/fixtures";
@@ -179,4 +180,19 @@ test("setScenario persiste; reset vuelve a cero; subscribe recibe cada cambio", 
   await api.reset();
   expect(api.getSnapshot()).toEqual({ state: expect.objectContaining({ module: "off" }), movements: [], events: [] });
   off();
+});
+
+test("submitKyc: el expediente capturado en la app pasa a revisión y, tras un rechazo, se puede reenviar", async () => {
+  const body = toSubmission(KYC_SECTIONS.reduce(fillSample, EMPTY_DRAFT));
+  const { api, flush } = harness("kyc_rejected");
+  expect(await codeOf(api.submitKyc(body))).toBe("invalid_transition"); // sin aceptar términos
+  await api.acceptTerms();
+  expect((await api.submitKyc(body)).kyc.status).toBe("under_review");
+  flush();
+  expect((await api.getModule()).kyc.status).toBe("rejected");
+  await api.setScenario("happy");
+  expect((await api.submitKyc(body)).kyc.status).toBe("under_review");
+  flush();
+  expect((await api.getModule()).kyc.status).toBe("approved");
+  expect((await api.getEvents()).map((e) => [e.type, e.payload.end_user])).toEqual([["kyc.rejected", "ana.torres@acme.example"], ["kyc.approved", "ana.torres@acme.example"]]);
 });

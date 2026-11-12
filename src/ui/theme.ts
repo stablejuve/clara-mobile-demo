@@ -1,17 +1,16 @@
-import type { TextStyle } from "react-native";
+import { Platform, type TextStyle } from "react-native";
 
-// Tokens de Relayer (relayer-core apps/web/app/tokens.css, paleta v5 Carbon/Petrol/Turquoise/Sage/Peach/Coral), spec D4.
-// Dos paletas con los mismos nombres semánticos: Paper (light) y Carbon (dark). Las pantallas leen `useTheme().c`; aquí viven
-// los únicos hex de la UI. Reglas: `live` es un punto, nunca texto; `ink40` sólo placeholders y deshabilitados.
+// Tokens Relayer Wallets v4 (diseño «Recibo Minimal»: tokens.css + spacing_and_effects.css). Paper (light) y Ash (dark) con los
+// mismos nombres semánticos. Las pantallas leen `useTheme().c`; aquí viven los únicos hex de la UI.
 
 export type Scheme = "light" | "dark";
 export type ThemeOverride = Scheme | "system";
 
-/** Identidad v5, independiente del esquema (arte de tarjeta, marca, puntos). */
-export const RL = { carbon: "#121819", petrol: "#00594F", turq: "#72BDB1", sage: "#B5C8AA", peach: "#F0B395", coral: "#D87968" } as const;
+/** Identidad fija, independiente del esquema (arte de tarjeta, isotipo, CTA de la anfitriona). */
+export const RL = { petrol: "#015F51", petrolDeep: "#012821", cream: "#F4EFE0", carbon: "#121819", frost: "rgba(236,230,214,0.42)" } as const;
 
-/** Forma: Relayer es de esquinas rectas (2 px); el pill sólo para puntos y avatares. */
-export const RADIUS = { card: 2, control: 2, pill: 9999 } as const;
+/** Radios v4: tarjetas 6, pill para botones, switches y avatares. */
+export const RADIUS = { card: 6, control: 6, sheet: 12, pill: 9999 } as const;
 
 export type Palette = {
   page: string; canvas: string; card: string; elev: string; input: string; sub: string;
@@ -23,25 +22,25 @@ export type Palette = {
 };
 
 export const LIGHT: Palette = {
-  page: "#FBFBFA", canvas: "#F5F5F4", card: "#FFFFFF", elev: "#FFFFFF", input: "#FFFFFF", sub: "#F1F1F0",
-  inkStrong: "#121819", inkBody: "#24292B",
-  ink72: "rgba(20,25,27,0.72)", ink55: "rgba(20,25,27,0.55)", ink40: "rgba(20,25,27,0.40)", ink25: "rgba(20,25,27,0.24)",
-  ink15: "rgba(20,25,27,0.12)", ink08: "rgba(20,25,27,0.07)", ink04: "rgba(20,25,27,0.035)",
-  brand: "#00594F", brandH: "#00473F", onBrand: "#FBFBF9", live: "#00C4CC", settled: "#3DA083",
+  page: "#F6F6F4", canvas: "#EFEFEC", card: "#FFFFFF", elev: "#FFFFFF", input: "#FFFFFF", sub: "#ECECE8",
+  inkStrong: "#012821", inkBody: "#0F3D34",
+  ink72: "rgba(15,61,52,0.72)", ink55: "rgba(15,61,52,0.55)", ink40: "rgba(15,61,52,0.40)", ink25: "rgba(15,61,52,0.25)",
+  ink15: "rgba(15,61,52,0.12)", ink08: "rgba(15,61,52,0.07)", ink04: "rgba(15,61,52,0.04)",
+  brand: "#015F51", brandH: "#013E36", onBrand: "#F4EFE0", live: "#00C4CC", settled: "#3DA083",
   info: "#3D5A7B", success: "#2F8E5C", warning: "#B57100", error: "#8B2940",
-  backdrop: "rgba(20,25,27,0.32)",
-  btnPrimary: "#121819", btnPrimaryH: "#2A3536", onBtnPrimary: "#FFFFFF",
+  backdrop: "rgba(15,61,52,0.32)",
+  btnPrimary: "#015F51", btnPrimaryH: "#013E36", onBtnPrimary: "#F4EFE0",
 };
 
 export const DARK: Palette = {
-  page: "#121819", canvas: "#0D1213", card: "#1A2223", elev: "#222B2C", input: "#121819", sub: "#0F1516",
-  inkStrong: "#FFFFFF", inkBody: "#E6ECEB",
-  ink72: "rgba(230,236,235,0.74)", ink55: "rgba(230,236,235,0.58)", ink40: "rgba(230,236,235,0.40)", ink25: "rgba(230,236,235,0.24)",
-  ink15: "rgba(230,236,235,0.12)", ink08: "rgba(230,236,235,0.07)", ink04: "rgba(230,236,235,0.04)",
-  brand: "#72BDB1", brandH: "#8CCBC1", onBrand: "#121819", live: "#33D6DD", settled: "#66C8A8",
-  info: "#8FA8C4", success: "#66C8A8", warning: "#E8B25C", error: "#D87968",
+  page: "#1A1A19", canvas: "#161614", card: "#272725", elev: "#2F2F2C", input: "#181816", sub: "#141413",
+  inkStrong: "#FFFFFF", inkBody: "#EDE7D8",
+  ink72: "rgba(237,231,216,0.72)", ink55: "rgba(237,231,216,0.55)", ink40: "rgba(237,231,216,0.40)", ink25: "rgba(237,231,216,0.25)",
+  ink15: "rgba(237,231,216,0.10)", ink08: "rgba(237,231,216,0.06)", ink04: "rgba(237,231,216,0.04)",
+  brand: "#ECE6D6", brandH: "#F4F0E8", onBrand: "#060606", live: "#33D6DD", settled: "#66C8A8",
+  info: "#8FA8C4", success: "#66C8A8", warning: "#E8B25C", error: "#D87B92",
   backdrop: "rgba(0,0,0,0.65)",
-  btnPrimary: "#72BDB1", btnPrimaryH: "#8FCCC2", onBtnPrimary: "#121819",
+  btnPrimary: "#ECE6D6", btnPrimaryH: "#F4F0E8", onBtnPrimary: "#060606",
 };
 
 export const PALETTES: Record<Scheme, Palette> = { light: LIGHT, dark: DARK };
@@ -58,21 +57,23 @@ export function alpha(hex: string, a: number): string {
   return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`;
 }
 
-// Familias cargadas en App.tsx: Instrument Sans (cuerpo) y JetBrains Mono (cifras, etiquetas). Archivo (display web) entra después.
+// Familias: Archivo (sans y display, cargada en App.tsx) y la mono del sistema (ui-monospace → Menlo en iOS).
+const MONO = Platform.select({ ios: "Menlo", android: "monospace", default: "ui-monospace, SFMono-Regular, Menlo, monospace" }) as string;
 export const F = {
-  r: "InstrumentSans_400Regular",
-  m: "InstrumentSans_500Medium",
-  sb: "InstrumentSans_600SemiBold",
-  b: "InstrumentSans_700Bold",
-  mono: "JetBrainsMono_400Regular",
-  monoM: "JetBrainsMono_500Medium",
-  monoB: "JetBrainsMono_700Bold",
+  r: "Archivo_400Regular",
+  m: "Archivo_500Medium",
+  sb: "Archivo_600SemiBold",
+  b: "Archivo_700Bold",
+  xb: "Archivo_800ExtraBold_Italic",
+  mono: MONO,
+  monoM: MONO,
+  monoB: MONO,
 } as const;
 
 export type FontKind = "mono";
 
 export function fam(weight: number, kind?: FontKind): string {
-  if (kind === "mono") return weight >= 700 ? F.monoB : weight >= 500 ? F.monoM : F.mono;
+  if (kind === "mono") return F.mono;
   if (weight >= 700) return F.b;
   if (weight >= 600) return F.sb;
   if (weight >= 500) return F.m;
@@ -84,6 +85,7 @@ export type TypeOpts = { lh?: number; ls?: number; mono?: boolean; color?: strin
 /** `font: <weight> <size>/<lh> <family>`; `ls` en em → px. Sin `color` no pone color (lo pone `T` con la paleta). */
 export function textStyle(weight: number, size: number, { lh, ls = 0, mono = false, color }: TypeOpts = {}): TextStyle {
   const style: TextStyle = { fontFamily: fam(weight, mono ? "mono" : undefined), fontSize: size };
+  if (mono && weight >= 600) style.fontWeight = "700"; // la mono del sistema sólo trae regular y bold
   if (lh) style.lineHeight = Math.round(size * lh);
   if (ls) style.letterSpacing = +(size * ls).toFixed(2);
   if (color) style.color = color;

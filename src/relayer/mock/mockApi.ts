@@ -4,6 +4,7 @@ import { DEMO_RATE, QUOTE_TTL_MS, quoteFor, usdcToMxnCents } from "../money";
 import * as M from "../state";
 import { type Balance, type EventType, type ModuleEvent, type ModuleSnapshot, type ModuleState, type Movement, type Quote, type Receipt, RelayerError } from "../types";
 import { bankFor, clabeValid } from "../clabe";
+import type { KycSubmission } from "../kyc";
 import { DEFAULT_DEPOSIT, DEMO_ADDRESS, DEMO_CARD, DEMO_USER, employerDeposit, KYC_LINKS } from "./fixtures";
 import { DEFAULT_SCENARIO, loadScenario, rulesFor, saveScenario, type Scenario } from "./scenarios";
 
@@ -52,6 +53,20 @@ export function createMockApi(opts: MockOptions): MockApi {
   const rules = () => rulesFor(scenario);
   const setMovement = (mid: string, patch: Partial<Movement>) => { movements = movements.map((m) => (m.id === mid ? { ...m, ...patch } : m)); };
 
+  let kycSubmission: KycSubmission | null = null;
+  /** incomplete → under_review y el veredicto de Bridge en segundo plano. */
+  const toReview = (): ModuleState => {
+    const s = apply(M.completeKycReturn(state));
+    later(() => {
+      const r = rules();
+      if (applySafe(M.resolveKyc(state, r.kycOutcome, now() - r.kycApprovedAgoMs, r.kycRejectionReasons))) {
+        event(r.kycOutcome === "approved" ? "kyc.approved" : "kyc.rejected", { status: r.kycOutcome, end_user: kycSubmission?.email ?? DEMO_USER.email });
+        emit();
+      }
+    }, BACKGROUND_MS.kycVerdict);
+    return s;
+  };
+
   const ready = loadScenario(opts.storage).then((s) => { scenario = s; emit(); });
   /** Toda llamada espera el escenario persistido y la latencia. */
   const tick = async () => { await ready; await delay(); };
@@ -79,15 +94,14 @@ export function createMockApi(opts: MockOptions): MockApi {
 
     async completeKycReturn() {
       await tick();
-      const s = apply(M.completeKycReturn(state));
-      later(() => {
-        const r = rules();
-        if (applySafe(M.resolveKyc(state, r.kycOutcome, now() - r.kycApprovedAgoMs, r.kycRejectionReasons))) {
-          event(r.kycOutcome === "approved" ? "kyc.approved" : "kyc.rejected", { status: r.kycOutcome });
-          emit();
-        }
-      }, BACKGROUND_MS.kycVerdict);
-      return s;
+      return toReview();
+    },
+
+    async submitKyc(data) {
+      await tick();
+      if (state.kyc.status !== "incomplete") apply(M.startKyc(state));
+      kycSubmission = data;
+      return toReview();
     },
 
     async reconfirmKyc() {
@@ -212,6 +226,6 @@ export function createMockApi(opts: MockOptions): MockApi {
     // Espera la carga persistida: si no, el `then` de `ready` pisaría el escenario recién elegido.
     async setScenario(s) { await ready; scenario = s; await saveScenario(opts.storage, s); emit(); },
     simulateEmployerDeposit,
-    async reset() { state = M.INITIAL_STATE; movements = []; events = []; receipts.clear(); quotes.clear(); seq = 0; emit(); },
+    async reset() { kycSubmission = null; state = M.INITIAL_STATE; movements = []; events = []; receipts.clear(); quotes.clear(); seq = 0; emit(); },
   };
 }

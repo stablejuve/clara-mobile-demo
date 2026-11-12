@@ -1,5 +1,6 @@
 import type { Balance, BankAccount, CardDetails, KycLinks, ModuleEvent, ModuleSnapshot, ModuleState, Movement, Quote, Receipt, WalletProvider } from "./types";
 import type { Scenario } from "./mock/scenarios";
+import type { KycSubmission } from "./kyc";
 
 /** Frontera del módulo (D6): las pantallas sólo hablan con esto. Hoy lo implementa `mock/`; la fase de backend lo cambia por HTTP.
  *  Lista del spec («Capa mock») + dos métodos que el flujo exige: `deactivate` (Ajustes, evento module.deactivated) y
@@ -9,6 +10,9 @@ export type RelayerModuleApi = {
   acceptTerms(): Promise<ModuleState>;
   startKyc(): Promise<KycLinks>;
   completeKycReturn(): Promise<ModuleState>;
+  /** Expediente capturado en la app (KYC nativo, como el wizard de relayer-core contra `POST /customers` de Bridge):
+   *  kyc not_started | incomplete | rejected → under_review; el veredicto llega en segundo plano. */
+  submitKyc(data: KycSubmission): Promise<ModuleState>;
   createPasskey(): Promise<{ address: string }>;
   getBalance(): Promise<Balance>;
   listMovements(): Promise<Movement[]>;

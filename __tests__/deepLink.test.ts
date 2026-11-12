@@ -14,3 +14,8 @@ test("todo lo demás se ignora", () => {
   expect(parseDeepLink(null)).toBeNull();
   expect(parseDeepLink(undefined)).toBeNull();
 });
+
+test("demo/seed/active sólo en desarrollo", () => {
+  expect(parseDeepLink("relayermobiledemo://demo/seed/active", true)).toEqual({ kind: "seed", to: "active" });
+  expect(parseDeepLink("relayermobiledemo://demo/seed/active", false)).toBeNull();
+});

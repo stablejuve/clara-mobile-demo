@@ -135,14 +135,14 @@ test("desactivar vuelve a cero; no se puede desactivar lo que está off", () => 
   expect(code(M.deactivate(M.INITIAL_STATE))).toBe("invalid_transition");
 });
 
-test("resumeScreen: a dónde vuelve «Continuar» según el estado", () => {
-  expect(M.resumeScreen(M.INITIAL_STATE)).toBe("terms");
-  expect(M.resumeScreen(atTerms)).toBe("terms");
-  expect(M.resumeScreen(atKyc)).toBe("kyc");
-  expect(M.resumeScreen(kycIncomplete)).toBe("kyc");
-  expect(M.resumeScreen(kycReview)).toBe("kycPending");
-  expect(M.resumeScreen(unwrap(M.resolveKyc(kycReview, "rejected", NOW)))).toBe("kycRejected");
-  expect(M.resumeScreen(kycApproved)).toBe("passkey");
-  expect(M.resumeScreen(passkey)).toBe("passkey");
-  expect(M.resumeScreen(active)).toBe("balance");
+test("onboardingPage: dónde se retoma la hoja de alta según el estado", () => {
+  expect(M.onboardingPage(M.INITIAL_STATE)).toBe(0);
+  expect(M.onboardingPage(atTerms)).toBe(0);
+  expect(M.onboardingPage(atKyc)).toBe(2);
+  expect(M.onboardingPage(kycIncomplete)).toBe(2);
+  expect(M.onboardingPage(kycReview)).toBe(2);
+  expect(M.onboardingPage(unwrap(M.resolveKyc(kycReview, "rejected", NOW)))).toBe(2);
+  expect(M.onboardingPage(kycApproved)).toBe(3);
+  expect(M.onboardingPage(passkey)).toBe(3);
+  expect(M.onboardingPage(active)).toBe(3);
 });

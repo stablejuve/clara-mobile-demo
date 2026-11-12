@@ -17,6 +17,6 @@ test.each(["light", "dark"] as const)("cada variante de botón se lee (%s)", (sc
 
 test("tone: borde al 35 %, fondo al 12 %, texto del color; neutral usa sub/ink", () => {
   expect(tone(LIGHT, "warning")).toEqual({ bd: "rgba(181,113,0,0.35)", bg: "rgba(181,113,0,0.12)", fg: "#B57100" });
-  expect(tone(DARK, "error")).toEqual({ bd: "rgba(216,121,104,0.35)", bg: "rgba(216,121,104,0.12)", fg: "#D87968" });
+  expect(tone(DARK, "error")).toEqual({ bd: "rgba(216,123,146,0.35)", bg: "rgba(216,123,146,0.12)", fg: "#D87B92" });
   expect(tone(DARK, "neutral")).toEqual({ bd: DARK.ink15, bg: DARK.sub, fg: DARK.ink72 });
 });

@@ -1,7 +1,7 @@
-import { ROW_BOTTOM, ROW_H, ROW_TOP, tabBarHeight } from "../src/ui/tabBarLayout";
+import { TAB_BAR_BASE, TAB_ROW_H, TAB_ROW_TOP, tabBarHeight } from "../src/ui/tabBarLayout";
 
-test("the bar is 8 + 54 + inset + 8: icon 19, gap 5, label 10.5 and 10 pt of padding on each side", () => {
-  expect([ROW_TOP, ROW_H, ROW_BOTTOM]).toEqual([8, 54, 8]);
-  expect(tabBarHeight(0)).toBe(70);
-  expect(tabBarHeight(34)).toBe(104);
+test("la barra mide 49 + zona segura (83 en un iPhone con indicador): fila de 44 a 6 px del borde", () => {
+  expect([TAB_ROW_TOP, TAB_ROW_H, TAB_BAR_BASE]).toEqual([6, 44, 49]);
+  expect(tabBarHeight(34)).toBe(83);
+  expect(tabBarHeight(0)).toBe(49);
 });
