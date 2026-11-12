@@ -22,6 +22,7 @@ describe.each(["light", "dark"] as const)("contraste WCAG · %s", (scheme) => {
   });
   test("texto sobre la marca y sobre el botón primario", () => {
     expect(contrast(c.onBrand, c.brand)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(c.onCta, c.cta)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(c.onBtnPrimary, c.btnPrimary)).toBeGreaterThanOrEqual(4.5);
   });
 });

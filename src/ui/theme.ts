@@ -15,7 +15,9 @@ export const RADIUS = { card: 6, control: 6, sheet: 12, pill: 9999 } as const;
 export type Palette = {
   page: string; canvas: string; card: string; elev: string; input: string; sub: string;
   inkStrong: string; inkBody: string; ink72: string; ink55: string; ink40: string; ink25: string; ink15: string; ink08: string; ink04: string;
-  brand: string; brandH: string; onBrand: string; live: string; settled: string;
+  brand: string; brandH: string; onBrand: string;
+  /** Botón principal: carbón en claro, beige de marca en oscuro. */
+  cta: string; onCta: string; live: string; settled: string;
   info: string; success: string; warning: string; error: string;
   backdrop: string;
   btnPrimary: string; btnPrimaryH: string; onBtnPrimary: string;
@@ -26,7 +28,7 @@ export const LIGHT: Palette = {
   inkStrong: "#012821", inkBody: "#0F3D34",
   ink72: "rgba(15,61,52,0.72)", ink55: "rgba(15,61,52,0.55)", ink40: "rgba(15,61,52,0.40)", ink25: "rgba(15,61,52,0.25)",
   ink15: "rgba(15,61,52,0.12)", ink08: "rgba(15,61,52,0.07)", ink04: "rgba(15,61,52,0.04)",
-  brand: "#015F51", brandH: "#013E36", onBrand: "#F4EFE0", live: "#00C4CC", settled: "#3DA083",
+  brand: "#015F51", brandH: "#013E36", onBrand: "#F4EFE0", cta: "#121819", onCta: "#FFFFFF", live: "#00C4CC", settled: "#3DA083",
   info: "#3D5A7B", success: "#2F8E5C", warning: "#B57100", error: "#8B2940",
   backdrop: "rgba(15,61,52,0.32)",
   btnPrimary: "#015F51", btnPrimaryH: "#013E36", onBtnPrimary: "#F4EFE0",
@@ -37,7 +39,7 @@ export const DARK: Palette = {
   inkStrong: "#FFFFFF", inkBody: "#EDE7D8",
   ink72: "rgba(237,231,216,0.72)", ink55: "rgba(237,231,216,0.55)", ink40: "rgba(237,231,216,0.40)", ink25: "rgba(237,231,216,0.25)",
   ink15: "rgba(237,231,216,0.10)", ink08: "rgba(237,231,216,0.06)", ink04: "rgba(237,231,216,0.04)",
-  brand: "#ECE6D6", brandH: "#F4F0E8", onBrand: "#060606", live: "#33D6DD", settled: "#66C8A8",
+  brand: "#ECE6D6", brandH: "#F4F0E8", onBrand: "#060606", cta: "#ECE6D6", onCta: "#060606", live: "#33D6DD", settled: "#66C8A8",
   info: "#8FA8C4", success: "#66C8A8", warning: "#E8B25C", error: "#D87B92",
   backdrop: "rgba(0,0,0,0.65)",
   btnPrimary: "#ECE6D6", btnPrimaryH: "#F4F0E8", onBtnPrimary: "#060606",

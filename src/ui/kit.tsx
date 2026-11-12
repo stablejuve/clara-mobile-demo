@@ -105,9 +105,9 @@ export function PrimaryButton({ label, onPress, dim, icon, size = 17, height = 5
   const o = useAnimatedNumber(dim ? 0.35 : 1, 250);
   return (
     <Press onPress={onPress} disabled={dim} accessibilityLabel={accessibilityLabel ?? label} style={style}>
-      <Animated.View style={{ height, borderRadius: RADIUS.pill, backgroundColor: c.brand, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, opacity: o }}>
-        {icon ? <Ico name={icon} size={20} color={c.onBrand} sw={1.9} /> : null}
-        <T w={600} s={size} color={c.onBrand}>{label}</T>
+      <Animated.View style={{ height, borderRadius: RADIUS.pill, backgroundColor: c.cta, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, opacity: o }}>
+        {icon ? <Ico name={icon} size={20} color={c.onCta} sw={1.9} /> : null}
+        <T w={600} s={size} color={c.onCta}>{label}</T>
       </Animated.View>
     </Press>
   );
