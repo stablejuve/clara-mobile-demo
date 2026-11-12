@@ -3,6 +3,7 @@ import type { AppCtx } from "../../ctx";
 import { t } from "../../i18n/es";
 import { cardShadow, Eyebrow, Group, Hairline, Isotype, ListRow, Press } from "../../ui/kit";
 import { LargeTitleScreen } from "../../ui/LargeTitle";
+import { PromoCard } from "../PromoCard";
 import { T } from "../../ui/primitives";
 import { RADIUS } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
@@ -13,19 +14,23 @@ export function BenefitsScreen({ nav, module }: AppCtx) {
   return (
     <LargeTitleScreen title={t("tab.benefits")}>
       <View style={{ paddingHorizontal: 16, gap: 22 }}>
-        <View style={[{ gap: 18, padding: 20, borderRadius: RADIUS.card, backgroundColor: c.card }, cardShadow(scheme)]}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <Isotype box={48} glyph={24} />
-            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <T w={600} s={19} lh={1.2} ls={-0.01} color={c.inkStrong}>{t("rc.name")}</T>
-              <T w={400} s={14} lh={1.35} color={c.ink55}>{t("rc.pitch")}</T>
+        {module.active ? (
+          <View style={[{ gap: 18, padding: 20, borderRadius: RADIUS.card, backgroundColor: c.card }, cardShadow(scheme)]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <Isotype box={48} glyph={24} />
+              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                <T w={600} s={19} lh={1.2} ls={-0.01} color={c.inkStrong}>{t("rc.name")}</T>
+                <T w={400} s={14} lh={1.35} color={c.ink55}>{t("rc.pitch")}</T>
+              </View>
             </View>
+            <Press onPress={() => (module.active ? nav("balance") : nav("onboarding"))} accessibilityLabel="benefits-recibo-cta"
+              style={{ height: 46, borderRadius: RADIUS.pill, backgroundColor: c.cta, alignItems: "center", justifyContent: "center" }}>
+              <T w={600} s={16} color={c.onCta}>{module.active ? t("rc.open") : t("rc.activate")}</T>
+            </Press>
           </View>
-          <Press onPress={() => (module.active ? nav("balance") : nav("onboarding"))} accessibilityLabel="benefits-recibo-cta"
-            style={{ height: 46, borderRadius: RADIUS.pill, backgroundColor: c.cta, alignItems: "center", justifyContent: "center" }}>
-            <T w={600} s={16} color={c.onCta}>{module.active ? t("rc.open") : t("rc.activate")}</T>
-          </Press>
-        </View>
+        ) : (
+          <PromoCard onPress={() => nav("onboarding")} cta={t("promo.cta")} accessibilityLabel="benefits-recibo-cta" />
+        )}
         <View style={{ gap: 8 }}>
           <Eyebrow style={{ paddingHorizontal: 4 }}>{t("benefits.more")}</Eyebrow>
           <Group>

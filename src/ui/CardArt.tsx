@@ -94,8 +94,8 @@ export function CardFront({ width, mode, last4, holder, expiry, brand, children 
     <CardSurface width={width} style={{ opacity: mode === "muted" ? 0.55 : 1 }}>
       <View style={{ position: "absolute", top: pad, left: pad, right: pad, bottom: pad, justifyContent: "space-between" }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <T w={600} s={17} ls={-0.01} {...ink}>{brand}</T>
-          <View style={{ opacity: 0.75 }}><Ico name="nfc" size={20} color={RL.cream} sw={1.7} /></View>
+          <T w={600} s={Math.max(9, Math.round(width * 0.047))} ls={-0.01} {...ink}>{brand}</T>
+          <View style={{ opacity: 0.75 }}><Ico name="nfc" size={Math.max(12, Math.round(width * 0.055))} color={RL.cream} sw={1.7} /></View>
         </View>
         <View style={{ marginTop: -h * 0.02 }}><Chip w={Math.round(width * 0.118)} /></View>
         <T w={500} s={Math.round(width * 0.05)} ls={0.06} mono {...ink} style={{ opacity: last4 ? 0.95 : 0.55 }}>

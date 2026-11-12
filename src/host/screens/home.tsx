@@ -5,6 +5,7 @@ import { t } from "../../i18n/es";
 import { formatCents, usdcToMxnCents } from "../../relayer/money";
 import { cardShadow, Eyebrow, Group, Hairline, Ico, ListRow, Press } from "../../ui/kit";
 import { LargeTitleScreen } from "../../ui/LargeTitle";
+import { PromoCard } from "../PromoCard";
 import { T } from "../../ui/primitives";
 import { RADIUS } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
@@ -16,28 +17,23 @@ export function HomeScreen({ nav, module, openBalance }: AppCtx) {
   return (
     <LargeTitleScreen title={t("home.greeting")} smallTitle={t("tab.home")} brand={t("home.greetingTag")}>
       <View style={{ paddingHorizontal: 16, gap: 22 }}>
-        <Press scale={0.98} onPress={() => (module.active ? openBalance() : nav("onboarding"))} accessibilityLabel="home-recibo"
-          style={[{ gap: 14, padding: 20, borderRadius: RADIUS.card, backgroundColor: c.card }, cardShadow(scheme)]}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Eyebrow>{t("rc.name")}</Eyebrow>
-            <Ico name="chevronRight" size={18} color={c.ink25} sw={2} />
-          </View>
-          {module.active ? (
+        {module.active ? (
+          <Press scale={0.98} onPress={openBalance} accessibilityLabel="home-recibo"
+            style={[{ gap: 14, padding: 20, borderRadius: RADIUS.card, backgroundColor: c.card }, cardShadow(scheme)]}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Eyebrow>{t("rc.name")}</Eyebrow>
+              <Ico name="chevronRight" size={18} color={c.ink25} sw={2} />
+            </View>
             <View style={{ gap: 4 }}>
               <T w={600} s={32} lh={1} ls={-0.025} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }}>
                 ${formatCents(usdcToMxnCents(shown))} <T w={500} s={14} color={c.ink40}>MXN</T>
               </T>
               <T w={400} s={13} mono color={c.ink55}>≈ {formatCents(shown)} USDC</T>
             </View>
-          ) : (
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <T w={600} s={17} lh={1.3} color={c.inkStrong}>{t("rc.globalCard")}</T>
-              <View style={{ height: 32, paddingHorizontal: 16, justifyContent: "center", borderRadius: RADIUS.pill, backgroundColor: c.cta }}>
-                <T w={600} s={14} color={c.onCta}>{t("rc.activate")}</T>
-              </View>
-            </View>
-          )}
-        </Press>
+          </Press>
+        ) : (
+          <PromoCard onPress={() => nav("onboarding")} cta={t("promo.cta")} accessibilityLabel="home-recibo" />
+        )}
         <View style={{ gap: 8 }}>
           <Eyebrow style={{ paddingHorizontal: 4 }}>{t("home.next")}</Eyebrow>
           <Group>
