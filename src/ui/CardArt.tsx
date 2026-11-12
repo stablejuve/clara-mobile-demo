@@ -84,23 +84,27 @@ export type CardMode = "preview" | "issuing" | "muted" | "active";
  * Frente de la tarjeta. `preview` la muestra tal como llegará (sin número); `issuing` le pasa
  * un brillo mientras se emite; `muted` la apaga (datos por reconfirmar).
  */
-export function CardFront({ width, mode, last4, holder, brand, children }: {
-  width: number; mode: CardMode; last4?: string | null; holder?: string | null; brand: string; children?: ReactNode;
+export function CardFront({ width, mode, last4, holder, expiry, brand, children }: {
+  width: number; mode: CardMode; last4?: string | null; holder?: string | null; expiry?: string | null; brand: string; children?: ReactNode;
 }) {
   const h = width / CARD_RATIO;
   const pad = Math.round(width * 0.062);
+  const ink = { color: RL.cream } as const;
   return (
     <CardSurface width={width} style={{ opacity: mode === "muted" ? 0.55 : 1 }}>
       <View style={{ position: "absolute", top: pad, left: pad, right: pad, bottom: pad, justifyContent: "space-between" }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <T w={600} s={17} ls={-0.01} color={RL.cream}>{brand}</T>
+          <T w={600} s={17} ls={-0.01} {...ink}>{brand}</T>
           <View style={{ opacity: 0.75 }}><Ico name="nfc" size={20} color={RL.cream} sw={1.7} /></View>
         </View>
-        <View style={{ marginTop: -h * 0.04 }}><Chip w={Math.round(width * 0.118)} /></View>
+        <View style={{ marginTop: -h * 0.02 }}><Chip w={Math.round(width * 0.118)} /></View>
+        <T w={500} s={Math.round(width * 0.05)} ls={0.06} mono {...ink} style={{ opacity: last4 ? 0.95 : 0.55 }}>
+          {`•••• •••• •••• ${last4 ?? "••••"}`}
+        </T>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
-          <View style={{ gap: 5 }}>
-            {holder ? <T w={500} s={11} ls={0.1} color={RL.cream} style={{ opacity: 0.7 }}>{holder}</T> : null}
-            {last4 ? <T w={500} s={15} ls={0.08} mono color={RL.cream} style={{ opacity: 0.9 }}>•••• {last4}</T> : null}
+          <View style={{ flexDirection: "row", gap: 22, alignItems: "flex-end", flexShrink: 1 }}>
+            {holder ? <T w={500} s={11} ls={0.1} numberOfLines={1} {...ink} style={{ opacity: 0.8, flexShrink: 1 }}>{holder}</T> : null}
+            {expiry ? <T w={500} s={11} ls={0.06} mono {...ink} style={{ opacity: 0.8 }}>{expiry}</T> : null}
           </View>
           <Network size={Math.round(width * 0.068)} />
         </View>

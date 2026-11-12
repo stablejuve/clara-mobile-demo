@@ -5,7 +5,7 @@ import type { KycLinks, Movement } from "../types";
 export const DEMO_USER = { name: "Ana Torres", email: "ana.torres@acme.example", country: "MX", locale: "es-MX" } as const;
 export const EMPLOYER = { name: "Acme Beneficios", short: "Acme", legalName: "Acme Beneficios S.A. de C.V." } as const;
 export const DEMO_ADDRESS = "0x7A3f9C2e4B1d8E6f0A5c3D7b9E2f4A6c8B0d1E3f";
-export const DEMO_CARD = { last4: "4821", expiry: "09/29", number: "4000 1234 5678 4821", cvv: "317" } as const;
+export const DEMO_CARD = { last4: "4821", expiry: "11/30", number: "4915 6637 0003 4821", cvv: "317" } as const;
 export const KYC_LINKS: KycLinks = {
   tosLink: "https://bridge.example/accept-terms-of-service?session_token=demo",
   kycLink: "https://bridge.example/kyc?session_token=demo&redirect_uri=relayermobiledemo%3A%2F%2Frecibo%2Fkyc-return",

@@ -69,7 +69,7 @@ test("happy: alta, nómina, tarjeta, teléfono, CLABE y envío completo; eventos
   expect(await codeOf(api.addToWallet("apple"))).toBe("card_not_active");
   await api.authorizeCard();
   const card = await api.getCard();
-  expect(card).toMatchObject({ holder: "ANA TORRES", number: "4000 1234 5678 4821", cvv: "317" });
+  expect(card).toMatchObject({ holder: "ANA TORRES", number: "4915 6637 0003 4821", cvv: "317" });
   await api.addToWallet("apple");
   expect((await api.getModule()).pass).toEqual({ status: "added", provider: "apple" });
   await api.freezeCard(true);

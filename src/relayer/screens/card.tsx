@@ -6,17 +6,19 @@ import { useAction } from "../../hooks/useAction";
 import { t } from "../../i18n/es";
 import { CARD_RATIO, CardBack, CardFront, cardLift, cardRadius } from "../../ui/CardArt";
 import { useFaceIdHud } from "../../ui/FaceIdHud";
-import { EASE_IOS, Group, Ico, LARGE_GAP, PrimaryButton, Press, Toggle } from "../../ui/kit";
+import { EASE_IOS, Eyebrow, Group, Hairline, Ico, type IcoName, LARGE_GAP, ListRow, PrimaryButton, Press, Toggle } from "../../ui/kit";
 import { LargeTitleScreen } from "../../ui/LargeTitle";
 import { T } from "../../ui/primitives";
 import { RADIUS, RL } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
+import { bankLabel } from "../display";
+import { formatCents, usdcToMxnCents } from "../money";
 import type { CardDetails } from "../types";
 
 type Phase = "none" | "issuing" | "authorize" | "expired" | "reconfirming" | "active";
 
 /** Tarjeta Visa virtual: pedir → emitiendo → autorizar con Face ID → tarjeta que se voltea, se congela y va a la Wallet. */
-export function CardScreen({ module, faceId }: AppCtx) {
+export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
   const { c } = useTheme();
   const { state, api } = module;
   const { error, run } = useAction();
@@ -33,6 +35,10 @@ export function CardScreen({ module, faceId }: AppCtx) {
   const [details, setDetails] = useState<CardDetails | null>(null);
   const [frozenUi, setFrozenUi] = useState(card.status === "frozen");
   const [flipped, setFlipped] = useState(false);
+  const [online, setOnline] = useState(true);
+  const [contactless, setContactless] = useState(true);
+  const p = kyc.draft.personal;
+  const holder = p.firstName ? `${p.firstName} ${p.lastName.split(" ")[0] ?? ""}`.trim().toUpperCase() : null;
   // Si la tarjeta ya estaba activa al entrar no hay animación de entrada; si se activa aquí, sí.
   const enter = useRef(new Animated.Value(phase === "active" ? 1 : 0)).current;
   const flip = useRef(new Animated.Value(0)).current;
@@ -77,7 +83,7 @@ export function CardScreen({ module, faceId }: AppCtx) {
           {phase !== "active" ? (
             <>
               <View style={[cardLift, { width: cardW, borderRadius: cardRadius(cardW) }]}>
-                <CardFront width={cardW} brand={t("rc.name")} mode={phase === "issuing" ? "issuing" : phase === "expired" || phase === "reconfirming" ? "muted" : "preview"} />
+                <CardFront width={cardW} brand={t("rc.name")} mode={phase === "issuing" ? "issuing" : phase === "expired" || phase === "reconfirming" ? "muted" : "preview"} holder={holder} />
               </View>
               <View style={{ paddingTop: 32, paddingHorizontal: 4, gap: 6 }}>
                 <T w={600} s={22} lh={1.2} ls={-0.015} color={c.inkStrong} style={{ textAlign: "center" }}>{title}</T>
@@ -99,7 +105,7 @@ export function CardScreen({ module, faceId }: AppCtx) {
               }}>
                 <Pressable onPress={() => { if (!frozenUi) setFlipped((f) => !f); }} accessibilityLabel="card-flip" style={[cardLift, { width: cardW, height: cardH, borderRadius: cardRadius(cardW) }]}>
                   <Animated.View style={[faceStyle, { transform: [{ perspective: 1200 }, { rotateY: frontRot }] }]}>
-                    <CardFront width={cardW} brand={t("rc.name")} mode="active" last4={details?.last4 ?? card.last4} holder={details?.holder}>
+                    <CardFront width={cardW} brand={t("rc.name")} mode="active" last4={details?.last4 ?? card.last4} holder={details?.holder ?? holder} expiry={details?.expiry ?? card.expiry}>
                       <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: frost, alignItems: "center", justifyContent: "center" }}>
                         <BlurView intensity={8} tint="light" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
                         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: RL.frost }} />
@@ -122,13 +128,28 @@ export function CardScreen({ module, faceId }: AppCtx) {
                 {frozenUi ? t("rc.card.frozen") : flipped ? t("rc.card.hide") : t("rc.card.show")}
               </T>
               <View style={{ gap: LARGE_GAP }}>
-                <Group>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 16, minHeight: 52 }}>
-                    <Ico name="freeze" size={20} color={c.ink55} sw={1.8} />
-                    <T w={500} s={16} color={c.inkStrong} style={{ flex: 1 }}>{t("rc.card.freeze")}</T>
-                    <Toggle on={frozenUi} onChange={toggleFreeze} accessibilityLabel="card-freeze" />
-                  </View>
-                </Group>
+                <View style={{ alignItems: "center", gap: 2, marginTop: -8 }}>
+                  <T w={400} s={13} color={c.ink55}>{t("rc.card.available")}</T>
+                  <T w={600} s={24} ls={-0.02} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }}>${formatCents(usdcToMxnCents(state.balanceUsdcCents))} MXN</T>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "center", gap: 36 }}>
+                  <CardAction icon="arrowUpRight" label={t("rc.card.withdraw")} onPress={() => nav("send")} a11y="card-withdraw" />
+                  <CardAction icon="eye" label={flipped ? t("rc.card.hideShort") : t("rc.card.details")} on={flipped} disabled={frozenUi} onPress={() => setFlipped((f) => !f)} a11y="card-details" />
+                  <CardAction icon="freeze" label={frozenUi ? t("rc.card.unfreeze") : t("rc.card.freezeShort")} on={frozenUi} onPress={() => toggleFreeze(!frozenUi)} a11y="card-freeze" />
+                </View>
+                <Section title={t("rc.card.speiTitle")}>
+                  <ListRow icon="landmark" title={state.bank.clabe ? bankLabel(state.bank) : t("rc.card.speiAdd")} sub={t("rc.card.speiSub")} chevron onPress={() => nav("send")} accessibilityLabel="card-spei" />
+                </Section>
+                <Section title={t("rc.card.controls")}>
+                  <ToggleRow icon="bag" label={t("rc.card.online")} on={online} onChange={setOnline} />
+                  <Hairline inset={48} />
+                  <ToggleRow icon="nfc" label={t("rc.card.contactless")} on={contactless} onChange={setContactless} />
+                </Section>
+                <Section title={t("rc.card.limits")}>
+                  <ListRow icon="gauge" title={t("rc.card.limitDaily")} value={t("rc.card.limitDailyValue")} valueMono />
+                  <Hairline inset={48} />
+                  <ListRow icon="landmark" title={t("rc.card.limitSpei")} value={t("rc.card.limitSpeiValue")} valueMono />
+                </Section>
                 {state.pass.status === "added" ? (
                   <View style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
                     <Ico name="check" size={18} color={c.success} sw={2.4} />
@@ -153,6 +174,39 @@ export function CardScreen({ module, faceId }: AppCtx) {
 }
 
 const faceStyle = { position: "absolute" as const, top: 0, left: 0, backfaceVisibility: "hidden" as const };
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={{ gap: 8 }}>
+      <Eyebrow style={{ paddingHorizontal: 4 }}>{title}</Eyebrow>
+      <Group>{children}</Group>
+    </View>
+  );
+}
+
+function ToggleRow({ icon, label, on, onChange }: { icon: IcoName; label: string; on: boolean; onChange: (v: boolean) => void }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 16, minHeight: 52 }}>
+      <Ico name={icon} size={20} color={c.ink55} sw={1.8} />
+      <T w={500} s={16} color={c.inkStrong} style={{ flex: 1 }}>{label}</T>
+      <Toggle on={on} onChange={onChange} accessibilityLabel={label} />
+    </View>
+  );
+}
+
+/** Botón redondo bajo la tarjeta; `on` lo rellena (p. ej. congelada). */
+function CardAction({ icon, label, on, disabled, onPress, a11y }: { icon: IcoName; label: string; on?: boolean; disabled?: boolean; onPress: () => void; a11y: string }) {
+  const { c } = useTheme();
+  return (
+    <Press scale={0.94} onPress={onPress} disabled={disabled} accessibilityLabel={a11y} style={{ alignItems: "center", gap: 8, width: 76, opacity: disabled ? 0.4 : 1 }}>
+      <View style={{ width: 54, height: 54, borderRadius: RADIUS.pill, backgroundColor: on ? c.brand : c.card, alignItems: "center", justifyContent: "center" }}>
+        <Ico name={icon} size={22} color={on ? c.onBrand : c.brand} sw={1.9} />
+      </View>
+      <T w={500} s={13} color={c.inkStrong}>{label}</T>
+    </Press>
+  );
+}
 
 function CardField({ k, v }: { k: string; v: string }) {
   return (
