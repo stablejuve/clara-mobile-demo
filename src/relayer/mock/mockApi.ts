@@ -5,7 +5,8 @@ import * as M from "../state";
 import { type Balance, type EventType, type ModuleEvent, type ModuleSnapshot, type ModuleState, type Movement, type Quote, type Receipt, RelayerError } from "../types";
 import { bankFor, clabeValid } from "../clabe";
 import type { KycSubmission } from "../kyc";
-import { DEFAULT_DEPOSIT, DEMO_ADDRESS, DEMO_CARD, DEMO_USER, employerDeposit, KYC_LINKS } from "./fixtures";
+import { beneBank, beneTitle } from "../beneficiaries";
+import { DEFAULT_DEPOSIT, DEMO_ADDRESS, DEMO_BENEFICIARIES, DEMO_CARD, DEMO_USER, employerDeposit, KYC_LINKS } from "./fixtures";
 import { DEFAULT_SCENARIO, loadScenario, rulesFor, saveScenario, type Scenario } from "./scenarios";
 
 // Implementación en memoria de RelayerModuleApi (spec «Capa mock»): latencias 300–1200 ms por llamada, procesos de fondo
@@ -116,6 +117,8 @@ export function createMockApi(opts: MockOptions): MockApi {
       apply(M.passkeyCreated(state));
       await delay(); // segunda latencia: derivar la dirección
       apply(M.walletReady(state, DEMO_ADDRESS));
+      // La demo arranca con cuentas ya guardadas: el default de «Transferir» es elegir a quién, no capturar una CLABE.
+      for (const b of DEMO_BENEFICIARIES) applySafe(M.addBeneficiary(state, { ...b, createdAt: now() }));
       event("module.activated", { end_user: DEMO_USER.email });
       event("wallet.ready", { address: DEMO_ADDRESS, chain: "base" });
       emit();
@@ -154,21 +157,24 @@ export function createMockApi(opts: MockOptions): MockApi {
 
     async addToWallet(provider) { await tick(); return apply(M.addToWallet(state, provider)); },
 
-    async addBankAccount(clabe) {
+    async listBeneficiaries() { await tick(); return [...state.beneficiaries]; },
+
+    async addBeneficiary(input) {
       await tick();
-      const digits = clabe.replace(/\s/g, "");
-      if (!clabeValid(digits)) throw new RelayerError("clabe_invalid");
-      apply(M.addBankAccount(state, digits, bankFor(digits) ?? "Banco", DEMO_USER.name));
-      later(() => { applySafe(M.resolveBank(state, rules().bankOutcome)); }, BACKGROUND_MS.bankVerification);
-      return state.bank;
+      const clabe = input.clabe.replace(/\s/g, "");
+      if (!clabeValid(clabe)) throw new RelayerError("clabe_invalid");
+      const b = { ...input, clabe, id: id("ben"), bankName: bankFor(clabe) ?? "Banco", status: "pending_verification" as const, createdAt: now() };
+      apply(M.addBeneficiary(state, b));
+      later(() => { applySafe(M.resolveBeneficiary(state, b.id, rules().bankOutcome)); }, BACKGROUND_MS.bankVerification);
+      return b;
     },
 
-    async quoteSend(amountUsdcCents) {
+    async quoteSend(amountUsdcCents, beneficiaryId) {
       await tick();
       const q = quoteFor(amountUsdcCents, state.balanceUsdcCents);
       if (!q.ok) throw new RelayerError(q.code);
       const quote: Quote = { id: id("q"), ...q.quote, expiresAt: now() + QUOTE_TTL_MS };
-      apply(M.quoteSend(state, quote.id, amountUsdcCents));
+      apply(M.quoteSend(state, quote.id, amountUsdcCents, beneficiaryId));
       quotes.set(quote.id, quote);
       return quote;
     },
@@ -180,15 +186,17 @@ export function createMockApi(opts: MockOptions): MockApi {
       if (now() > quote.expiresAt) throw new RelayerError("quote_expired");
       apply(M.beginConfirm(state, quoteId));
       await tick();
+      const bene = state.beneficiaries.find((b) => b.id === state.send.beneficiaryId);
       const receiptId = id("rcpt");
       const receipt: Receipt = {
         id: receiptId, folio: `RCB-${String(seq).padStart(6, "0")}`, status: "submitted",
         amountUsdcCents: quote.amountUsdcCents, feeUsdcCents: quote.feeUsdcCents, amountMxnCents: quote.amountMxnCents, rate: quote.rate,
-        bankName: state.bank.bankName ?? "Banco", clabeLast4: (state.bank.clabe ?? "").slice(-4), createdAt: now(), completedAt: null, failureCode: null,
+        beneficiaryName: bene?.name ?? "", bankName: bene?.bankName ?? "Banco", clabeLast4: (bene?.clabe ?? "").slice(-4), createdAt: now(), completedAt: null, failureCode: null,
       };
       receipts.set(receiptId, receipt);
       const mid = id("mv");
-      movements = [...movements, { id: mid, kind: "withdrawal", status: "pending", amountUsdcCents: quote.amountUsdcCents, at: now(), receiptId }];
+      movements = [...movements, { id: mid, kind: "withdrawal", status: "pending", amountUsdcCents: quote.amountUsdcCents, at: now(), receiptId,
+        toLabel: bene ? beneTitle(bene) : undefined, toBank: bene ? beneBank(bene) : undefined }];
       apply(M.submitSend(state, quoteId, quote.amountUsdcCents, receiptId));
       later(() => {
         const outcome = rules().sendOutcome;

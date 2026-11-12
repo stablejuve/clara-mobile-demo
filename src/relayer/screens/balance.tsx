@@ -46,7 +46,7 @@ export function BalanceScreen({ nav, module }: AppCtx) {
           <View style={{ borderRadius: RADIUS.card, backgroundColor: c.card, overflow: "hidden" }}>
             {movements.map((m) => (
               <EnterRow key={m.id} animate={!initial.has(m.id)}>
-                <MovementRow m={m} title={movementTitle(m, state.bank)} sub={movementSub(m, now)} onPress={() => nav("movement", { id: m.id })} />
+                <MovementRow m={m} title={movementTitle(m)} sub={movementSub(m, now)} onPress={() => nav("movement", { id: m.id })} />
               </EnterRow>
             ))}
           </View>

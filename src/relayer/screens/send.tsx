@@ -1,6 +1,5 @@
-import * as Clipboard from "expo-clipboard";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Pressable, useWindowDimensions, View } from "react-native";
+import { Animated, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import type { AppCtx } from "../../ctx";
@@ -8,18 +7,15 @@ import { useAction } from "../../hooks/useAction";
 import { useNow } from "../../hooks/useNow";
 import { t } from "../../i18n/es";
 import { useFaceIdHud } from "../../ui/FaceIdHud";
-import { DrawCheck, EASE_IOS, Grabber, Ico, Keypad, type KeypadKey, PrimaryButton, SoftPill, Spinner, useShake } from "../../ui/kit";
+import { DrawCheck, EASE_IOS, Eyebrow, Grabber, Group, Hairline, Ico, Keypad, type KeypadKey, PrimaryButton, SoftPill, Spinner, useShake } from "../../ui/kit";
 import { T } from "../../ui/primitives";
 import { RADIUS } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
-import { bankFor, clabeValid } from "../clabe";
-import { bankLabel } from "../display";
+import { beneBank, beneTitle } from "../beneficiaries";
+import type { SheetParams } from "../../navigation/routes";
+import { BeneRow, NewBeneRow, sortBenes } from "./beneRow";
 import { formatCents, mxnToUsdcCents, quoteFor } from "../money";
 import type { Quote, Receipt } from "../types";
-
-/** CLABE de la demo (BBVA, dígito de control válido) para «Pegar» cuando el portapapeles no trae una. */
-export const DEMO_CLABE = "012180001234567899";
-type ClabeState = "idle" | "verifying" | "ok";
 
 /** «012 180 00123456789 9»: banco, plaza, cuenta, control. */
 export const groupClabe = (c: string) => [c.slice(0, 3), c.slice(3, 6), c.slice(6, 17), c.slice(17)].filter(Boolean).join(" ");
@@ -33,55 +29,27 @@ export function amountKey(v: string, k: KeypadKey): string {
   return v.replace(".", "").length < 7 ? v + k : v;
 }
 
-/** Hoja Transferir: carril CLABE → monto → revisar → listo. Con la CLABE ya verificada arranca en el monto. */
-export function SendSheet(ctx: AppCtx) {
+/** Hoja Transferir: a quién (cuentas guardadas, como los beneficiarios de relayer-core) → monto → revisar → listo.
+ *  Con `beneficiaryId` (desde la tarjeta) arranca en el monto. */
+export function SendSheet(ctx: AppCtx & { params?: SheetParams["send"] }) {
   const { c } = useTheme();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { state, api, movements } = ctx.module;
   const hud = useFaceIdHud(ctx.faceId);
-  const [idx, setIdx] = useState(state.bank.status === "verified" ? 1 : 0);
+  const preset = ctx.params?.beneficiaryId ?? null;
+  const [beneId, setBeneId] = useState<string | null>(preset);
+  const bene = state.beneficiaries.find((b) => b.id === beneId) ?? null;
+  const [idx, setIdx] = useState(preset ? 1 : 0);
   const x = useRef(new Animated.Value(-idx * width)).current;
   useEffect(() => { Animated.timing(x, { toValue: -idx * width, duration: 520, easing: EASE_IOS, useNativeDriver: true }).start(); }, [idx, width, x]);
   const [shakeX, shake] = useShake();
   const { error, setError, run } = useAction();
   const bottom = Math.max(insets.bottom, 12) + 12;
 
-  // ── CLABE ──
-  const [clabe, setClabe] = useState(state.bank.status === "pending_verification" ? state.bank.clabe ?? "" : "");
-  const [cstate, setCstate] = useState<ClabeState>(state.bank.status === "pending_verification" ? "verifying" : "idle");
-  const [clabeErr, setClabeErr] = useState("");
-  useEffect(() => {
-    if (cstate !== "verifying") return;
-    if (state.bank.status === "verified") setCstate("ok");
-    if (state.bank.status === "failed") { setCstate("idle"); setClabeErr(t("rc.send.clabeFailed")); shake(); }
-  }, [state.bank.status, cstate, shake]);
-  // «Verificada» se ve un momento y la hoja pasa sola al monto.
-  useEffect(() => {
-    if (cstate !== "ok") return;
-    const id = setTimeout(() => setIdx(1), 700);
-    return () => clearTimeout(id);
-  }, [cstate]);
-  const clabeKey = (k: KeypadKey) => {
-    if (cstate !== "idle") return;
-    setClabeErr("");
-    if (k === "del") setClabe((v) => v.slice(0, -1));
-    else if (k !== ".") setClabe((v) => (v.length < 18 ? v + k : v));
-  };
-  const paste = async () => {
-    const clip = (await Clipboard.getStringAsync().catch(() => "")).replace(/\D/g, "");
-    setClabe(clip.length === 18 ? clip : DEMO_CLABE);
-    setClabeErr("");
-  };
-  const verify = async () => {
-    if (clabe.length !== 18 || cstate !== "idle") return;
-    if (!clabeValid(clabe)) { setClabeErr(t("errors.clabe_invalid")); shake(); return; }
-    setCstate("verifying");
-    if (!(await run(() => api.addBankAccount(clabe)))) setCstate("idle");
-  };
-  const bankName = clabe.length >= 3 ? bankFor(clabe) : null;
-  const clabeNote = cstate === "verifying" ? t("rc.send.verifyingOwner") : cstate === "ok" ? t("rc.send.verified") : clabeErr || bankName || (clabe ? t("rc.send.digits", { n: clabe.length }) : t("rc.send.yourName"));
-  const clabeNoteColor = cstate === "ok" ? c.success : clabeErr ? c.error : c.ink55;
+  // ── A quién ──
+  const pick = (id: string) => { setError(""); setBeneId(id); setIdx(1); };
+  const list = sortBenes(state.beneficiaries);
 
   // ── Monto ──
   const [unit, setUnit] = useState<"mxn" | "usdc">("mxn");
@@ -97,7 +65,8 @@ export function SendSheet(ctx: AppCtx) {
   const [quote, setQuote] = useState<Quote | null>(null);
   const review = async () => {
     if (!check?.ok) { shake(); return; }
-    const q = await run(() => api.quoteSend(usdc));
+    if (!beneId) return;
+    const q = await run(() => api.quoteSend(usdc, beneId));
     if (q) { setQuote(q); setIdx(2); }
   };
 
@@ -108,7 +77,7 @@ export function SendSheet(ctx: AppCtx) {
   const [confirming, setConfirming] = useState(false);
   const confirm = async () => {
     if (!quote || confirming) return;
-    if (left <= 0) { const q = await run(() => api.quoteSend(quote.amountUsdcCents)); if (q) setQuote(q); return; }
+    if (left <= 0) { if (!beneId) return; const q = await run(() => api.quoteSend(quote.amountUsdcCents, beneId)); if (q) setQuote(q); return; }
     setConfirming(true);
     try {
       if (!(await hud.auth(t("common.ready"), t("rc.send.authReason")))) return;
@@ -121,9 +90,9 @@ export function SendSheet(ctx: AppCtx) {
   const mv = receipt ? movements.find((m) => m.receiptId === receipt.id) : undefined;
   const status = mv?.status ?? "pending";
 
-  const backLabel = idx === 2 ? t("rc.send.back") : idx === 3 ? "" : t("common.cancel");
+  const backLabel = idx === 1 || idx === 2 ? t("rc.send.back") : idx === 3 ? "" : t("common.cancel");
   const titles = [t("rc.send.account"), t("rc.transfer"), t("rc.send.review"), ""];
-  const onBack = () => { setError(""); if (idx === 2) setIdx(1); else if (idx !== 3) ctx.back(); };
+  const onBack = () => { setError(""); if (idx === 2 || idx === 1) setIdx(idx - 1); else if (idx !== 3) ctx.back(); };
 
   return (
     <View style={{ flex: 1, backgroundColor: c.page }}>
@@ -135,27 +104,29 @@ export function SendSheet(ctx: AppCtx) {
       </View>
       <View style={{ flex: 1, overflow: "hidden" }}>
         <Animated.View style={{ flexDirection: "row", width: width * 4, flex: 1, transform: [{ translateX: x }] }}>
-          {/* CLABE */}
-          <View style={{ width, paddingHorizontal: 16, paddingBottom: bottom }}>
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 14 }}>
-              <T w={500} s={10.5} ls={0.08} mono color={c.ink55}>CLABE</T>
-              <Animated.View style={{ minHeight: 34, transform: [{ translateX: shakeX }] }}>
-                <T w={500} s={25} ls={0.04} mono color={clabe ? c.inkStrong : c.ink25}>{clabe ? groupClabe(clabe) : "000 000 00000000000 0"}</T>
-              </Animated.View>
-              <View style={{ height: 28, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                {cstate === "verifying" ? <Spinner size={15} color={clabeNoteColor} /> : null}
-                {cstate === "ok" ? <Ico name="check" size={15} color={clabeNoteColor} sw={2.6} /> : null}
-                <T w={500} s={14} color={clabeNoteColor}>{clabeNote}</T>
-              </View>
-              {!clabe ? <SoftPill label={t("rc.send.paste")} onPress={() => { void paste(); }} accessibilityLabel="send-paste" /> : <View style={{ height: 32 }} />}
-            </View>
-            <Keypad onKey={clabeKey} blankDot />
-            <PrimaryButton label={t("rc.send.verify")} dim={clabe.length !== 18 || cstate !== "idle"} onPress={() => { void verify(); }} accessibilityLabel="send-verify" />
+          {/* A quién */}
+          <View style={{ width }}>
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottom, gap: 22 }} showsVerticalScrollIndicator={false}>
+              <Group><NewBeneRow onPress={() => ctx.nav("beneficiary")} /></Group>
+              {list.length > 0 ? (
+                <View style={{ gap: 8 }}>
+                  <Eyebrow style={{ paddingHorizontal: 4 }}>{t("rc.bene.saved")}</Eyebrow>
+                  <Group>
+                    {list.map((b, k) => (
+                      <View key={b.id}>
+                        {k > 0 ? <Hairline inset={68} /> : null}
+                        <BeneRow b={b} selected={b.id === beneId} onPress={() => pick(b.id)} />
+                      </View>
+                    ))}
+                  </Group>
+                </View>
+              ) : null}
+            </ScrollView>
           </View>
           {/* Monto */}
           <View style={{ width, paddingHorizontal: 16, paddingBottom: bottom }}>
             <View style={{ alignItems: "center", paddingTop: 6 }}>
-              {state.bank.clabe ? <SoftPill icon="landmark" label={bankLabel(state.bank)} /> : null}
+              {bene ? <SoftPill icon="landmark" label={`${beneTitle(bene)} · ${beneBank(bene)}`} onPress={() => setIdx(0)} accessibilityLabel="send-change-bene" /> : null}
             </View>
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 14 }}>
               <Animated.View style={{ transform: [{ translateX: shakeX }] }}>
@@ -185,7 +156,8 @@ export function SendSheet(ctx: AppCtx) {
                 [t("rc.send.youSend"), `${formatCents(quote.amountUsdcCents)} USDC`],
                 [t("rc.send.fee"), `${formatCents(quote.feeUsdcCents)} USDC`],
                 [t("rc.send.rate"), `$${quote.rate.toFixed(2)}`],
-                [t("rc.send.to"), bankLabel(state.bank)],
+                [t("rc.send.to"), bene ? beneTitle(bene) : "—"],
+                [t("rc.bene.account"), bene ? beneBank(bene) : "—"],
               ].map(([k, val]) => (
                 <View key={k} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: c.ink08 }}>
                   <T w={400} s={15} color={c.ink55}>{k}</T>

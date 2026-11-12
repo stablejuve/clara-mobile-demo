@@ -8,7 +8,7 @@ import { CloseButton } from "../../ui/kit";
 import { T } from "../../ui/primitives";
 import { RADIUS } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
-import { bankLabel, movementTitle } from "../display";
+import { movementTitle } from "../display";
 import { formatCents, formatMxn, formatUsdc } from "../money";
 import type { Receipt } from "../types";
 
@@ -16,7 +16,7 @@ import type { Receipt } from "../types";
 export function MovementSheet(ctx: AppCtx & { params: SheetParams["movement"] }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const { state, movements, api } = ctx.module;
+  const { movements, api } = ctx.module;
   const m = movements.find((x) => x.id === ctx.params.id);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   useEffect(() => { if (m?.receiptId) void api.getReceipt(m.receiptId).then(setReceipt).catch(() => {}); }, [m?.receiptId, m?.status, api]);
@@ -25,13 +25,13 @@ export function MovementSheet(ctx: AppCtx & { params: SheetParams["movement"] })
   const rows: [string, string][] = isIn
     ? [[t("rc.mv.from"), m.fromLabel ?? t("common.employer")], [t("rc.mv.concept"), m.concept ?? "—"], [t("rc.mv.reference"), m.reference ?? "—"],
       [t("rc.mv.equals"), m.amountMxnCents !== undefined ? formatMxn(m.amountMxnCents) : "—"], [t("rc.mv.network"), "Base"]]
-    : [[t("rc.send.to"), bankLabel(state.bank)], [t("rc.send.youReceive"), receipt ? formatMxn(receipt.amountMxnCents) : "—"],
+    : [[t("rc.send.to"), m.toLabel ?? "—"], [t("rc.bene.account"), m.toBank ?? "—"], [t("rc.send.youReceive"), receipt ? formatMxn(receipt.amountMxnCents) : "—"],
       [t("rc.send.fee"), receipt ? formatUsdc(receipt.feeUsdcCents) : "—"], [t("rc.send.rate"), receipt ? `$${receipt.rate.toFixed(2)}` : "—"], [t("rc.mv.folio"), receipt?.folio ?? "—"]];
   return (
     <View style={{ backgroundColor: c.page, paddingHorizontal: 16, paddingBottom: Math.max(insets.bottom, 12) + 12 }}>
       <View style={{ alignItems: "flex-end", paddingTop: 18 }}><CloseButton onPress={ctx.back} /></View>
       <View style={{ alignItems: "center", gap: 6, paddingTop: 4, paddingBottom: 26 }}>
-        <T w={500} s={15} color={c.ink55}>{movementTitle(m, state.bank)}</T>
+        <T w={500} s={15} color={c.ink55}>{movementTitle(m)}</T>
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
           <T w={600} s={44} lh={1} ls={-0.035} color={isIn ? c.settled : c.inkStrong} style={{ fontVariant: ["tabular-nums"] }}>{isIn ? "+" : "−"}{formatCents(m.amountUsdcCents)}</T>
           <T w={500} s={15} color={c.ink40}>USDC</T>

@@ -1,10 +1,21 @@
 import { mxnToUsdcCents } from "../money";
-import type { KycLinks, Movement } from "../types";
+import type { Beneficiary, KycLinks, Movement } from "../types";
 
 // Datos fijos de la demo (D2: empleada en México). Ningún valor es real; las URLs son ilustrativas.
 export const DEMO_USER = { name: "Ana Torres", email: "ana.torres@acme.example", country: "MX", locale: "es-MX" } as const;
 export const EMPLOYER = { name: "Acme Beneficios", short: "Acme", legalName: "Acme Beneficios S.A. de C.V." } as const;
 export const DEMO_ADDRESS = "0x7A3f9C2e4B1d8E6f0A5c3D7b9E2f4A6c8B0d1E3f";
+/** Cuentas guardadas con las que arranca la demo (CLABEs con dígito de control válido, ninguna real). */
+export const DEMO_BENEFICIARIES: readonly Omit<Beneficiary, "createdAt">[] = [
+  { id: "ben_self", owner: "self", name: "Ana Lucía Torres Medina", alias: "Mi cuenta", email: "", rfc: "TOMA940318KJ3", address: null,
+    clabe: "012180001234567899", bankName: "BBVA México", status: "verified" },
+  { id: "ben_mama", owner: "individual", name: "María Elena Medina Ruiz", alias: "Mamá", email: "maria.medina@correo.example", rfc: "",
+    address: { street: "Calle Pino 45", city: "Puebla", state: "Puebla", postalCode: "72000" }, clabe: "072180004310562470", bankName: "Banorte", status: "verified" },
+  { id: "ben_renta", owner: "individual", name: "Jorge Ruiz Salgado", alias: "Renta depa", email: "", rfc: "",
+    address: { street: "Av. Universidad 1200", city: "Benito Juárez", state: "Ciudad de México", postalCode: "03100" }, clabe: "014180659229718401", bankName: "Santander", status: "verified" },
+  { id: "ben_gym", owner: "business", name: "Gimnasio Fortis S.A. de C.V.", alias: "Gimnasio", email: "pagos@fortis.example", rfc: "GFO180512AB1",
+    address: { street: "Insurgentes Sur 1458", city: "Benito Juárez", state: "Ciudad de México", postalCode: "03230" }, clabe: "646180158300125536", bankName: "STP", status: "verified" },
+];
 export const DEMO_CARD = { last4: "4821", expiry: "11/30", number: "4915 6637 0003 4821", cvv: "317" } as const;
 export const KYC_LINKS: KycLinks = {
   tosLink: "https://bridge.example/accept-terms-of-service?session_token=demo",

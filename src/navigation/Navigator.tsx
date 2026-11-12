@@ -6,7 +6,7 @@ import type { AppCtx } from "../ctx";
 import { BenefitsScreen } from "../host/screens/benefits";
 import { HomeScreen } from "../host/screens/home";
 import { ProfileScreen } from "../host/screens/profile";
-import { BalanceScreen, CardScreen, DemoPanelScreen, KycFormSheet, MovementSheet, OnboardingSheet, SendSheet } from "../relayer/screens";
+import { BalanceScreen, CardScreen, DemoPanelScreen, KycFormSheet, MovementSheet, OnboardingSheet, BeneficiaryFormSheet, SendSheet } from "../relayer/screens";
 import { TabBar } from "../ui/TabBar";
 import { useTheme } from "../ui/ThemeProvider";
 import { useAppCtx } from "./context";
@@ -39,6 +39,7 @@ const DemoPanel = withCtx(DemoPanelScreen, "demoPanel");
 const Onboarding = withCtx(OnboardingSheet, "onboarding");
 const KycForm = withCtx(KycFormSheet, "kycForm");
 const Send = withCtx(SendSheet, "send");
+const Beneficiary = withCtx(BeneficiaryFormSheet, "beneficiary");
 const Movement = withCtx(MovementSheet, "movement");
 
 /** Sin cabecera nativa (cada pantalla dibuja la suya), push de iOS con su gesto; fondo de la paleta para no ver blanco en dark. */
@@ -92,6 +93,7 @@ export function Navigator() {
         <Root.Screen name="onboarding" component={Onboarding} options={page} />
         <Root.Screen name="kycForm" component={KycForm} options={page} />
         <Root.Screen name="send" component={Send} options={page} />
+        <Root.Screen name="beneficiary" component={Beneficiary} options={page} />
         <Root.Screen name="movement" component={Movement}
           options={{ presentation: "formSheet", sheetAllowedDetents: "fitToContents", sheetGrabberVisible: true, sheetCornerRadius: 12, contentStyle: { backgroundColor: c.page } }} />
       </Root.Navigator>

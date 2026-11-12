@@ -1,4 +1,4 @@
-import type { Balance, BankAccount, CardDetails, KycLinks, ModuleEvent, ModuleSnapshot, ModuleState, Movement, Quote, Receipt, WalletProvider } from "./types";
+import type { Balance, Beneficiary, CardDetails, KycLinks, ModuleEvent, ModuleSnapshot, ModuleState, Movement, NewBeneficiary, Quote, Receipt, WalletProvider } from "./types";
 import type { Scenario } from "./mock/scenarios";
 import type { KycSubmission } from "./kyc";
 
@@ -21,8 +21,11 @@ export type RelayerModuleApi = {
   getCard(): Promise<CardDetails>;
   freezeCard(frozen: boolean): Promise<ModuleState>;
   addToWallet(provider: WalletProvider): Promise<ModuleState>;
-  addBankAccount(clabe: string): Promise<BankAccount>;
-  quoteSend(amountUsdcCents: number): Promise<Quote>;
+  /** Cuentas guardadas (también vienen en `ModuleState.beneficiaries`). */
+  listBeneficiaries(): Promise<Beneficiary[]>;
+  /** Nueva cuenta CLABE (asistente como el de relayer-core): entra en `pending_verification`; Bridge la verifica en segundo plano. */
+  addBeneficiary(input: NewBeneficiary): Promise<Beneficiary>;
+  quoteSend(amountUsdcCents: number, beneficiaryId: string): Promise<Quote>;
   confirmSend(quoteId: string): Promise<Receipt>;
   getReceipt(id: string): Promise<Receipt>;
   getEvents(): Promise<ModuleEvent[]>;

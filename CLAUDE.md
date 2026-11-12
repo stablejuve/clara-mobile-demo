@@ -6,6 +6,7 @@ Expo app (fork del cascarón `pickler-expo/apps/mobile`) que demuestra el módul
 - Stack: Expo 57, React Native 0.86, react-navigation 7, StyleSheet con tokens en `src/ui/theme.ts` (Wallets v4 Paper/Ash del diseño «Recibo Minimal» de Claude Design), Archivo + mono del sistema, jest-expo para lógica pura.
 - UI: diseño «Recibo Minimal». Pestañas con título grande (`src/ui/LargeTitle.tsx`), hojas nativas (`onboarding`, `kycForm`, `send`, `movement`), kit en `src/ui/kit.tsx` (SVG exactos del diseño).
 - KYC nativo: 5 secciones con «Llenar con ejemplo»; modelo y validación en `src/relayer/kyc.ts`, contraste con relayer-core en `docs/kyc-native.md`.
+- Beneficiarios (como `beneficiaries-v2` de relayer-core): `ModuleState.beneficiaries` reemplaza la cuenta única; Transferir abre en «Enviar a» (cuentas guardadas) y «Nueva cuenta» es la hoja `beneficiary` (titular → datos → domicilio → CLABE → revisar). Modelo en `src/relayer/beneficiaries.ts`; la demo arranca con 4 cuentas (`DEMO_BENEFICIARIES`).
 - Dev: `xcrun simctl openurl booted relayermobiledemo://demo/seed/active` deja el módulo activo; `…/demo/open/<pantalla>` abre una pantalla.
 - Contrato: `src/relayer/api.ts` (`RelayerModuleApi`) es la frontera; `src/relayer/mock/` la implementa. La fase de backend reemplaza solo el mock.
 - Copy en `src/i18n/es.ts`; nunca texto hardcodeado en pantallas.

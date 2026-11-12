@@ -1,4 +1,4 @@
-import type { CardStatus, ModuleState, Movement, RelayerErrorCode, WalletProvider } from "./types";
+import type { Beneficiary, CardStatus, ModuleState, Movement, RelayerErrorCode, WalletProvider } from "./types";
 
 // Máquina de estados del módulo (spec «Máquina de estados»). Pura: cada transición devuelve un estado nuevo o un código.
 // La capa mock aplica estas funciones y les pone latencia; el backend real tendrá las mismas reglas del lado del servidor.
@@ -16,8 +16,8 @@ export const INITIAL_STATE: ModuleState = {
   wallet: { status: "none", address: null, chain: "base" },
   card: { status: "none", last4: null, expiry: null, authorizedAt: null },
   pass: { status: "not_added", provider: null },
-  bank: { status: "none", clabe: null, bankName: null, ownerName: null },
-  send: { status: "idle", quoteId: null, receiptId: null },
+  beneficiaries: [],
+  send: { status: "idle", quoteId: null, receiptId: null, beneficiaryId: null },
   balanceUsdcCents: 0,
 };
 
@@ -114,28 +114,34 @@ export function addToWallet(s: ModuleState, provider: WalletProvider): Result {
 
 // ── Banco ───────────────────────────────────────────────────────────────────
 /** CLABE como cuenta externa: none | failed → pending_verification (depósito de 0.01 MXN). */
-export function addBankAccount(s: ModuleState, clabe: string, bankName: string, ownerName: string): Result {
+/** Nueva cuenta guardada: entra en `pending_verification` (Bridge valida titular y CLABE). Sin CLABEs repetidas. */
+export function addBeneficiary(s: ModuleState, b: Beneficiary): Result {
   if (s.module !== "active") return fail("invalid_transition");
-  if (s.bank.status !== "none" && s.bank.status !== "failed") return fail("invalid_transition");
-  return ok({ ...s, bank: { status: "pending_verification", clabe, bankName, ownerName } });
+  if (s.beneficiaries.some((x) => x.clabe === b.clabe && x.status !== "failed")) return fail("beneficiary_duplicate");
+  return ok({ ...s, beneficiaries: [...s.beneficiaries.filter((x) => x.clabe !== b.clabe), b] });
 }
-export function resolveBank(s: ModuleState, outcome: "verified" | "failed"): Result {
-  return s.bank.status === "pending_verification" ? ok({ ...s, bank: { ...s.bank, status: outcome } }) : fail("invalid_transition");
+export function resolveBeneficiary(s: ModuleState, id: string, outcome: "verified" | "failed"): Result {
+  const b = s.beneficiaries.find((x) => x.id === id);
+  if (!b || b.status !== "pending_verification") return fail("invalid_transition");
+  return ok({ ...s, beneficiaries: s.beneficiaries.map((x) => (x.id === id ? { ...x, status: outcome } : x)) });
 }
 
 // ── Envío ───────────────────────────────────────────────────────────────────
-/** Precondiciones del spec: bank verified y saldo suficiente (el mínimo de 50 MXN lo valida money.ts al cotizar). */
-export function canSend(s: ModuleState, amountUsdcCents: number): RelayerErrorCode | null {
+/** Precondiciones del spec: beneficiario verificado y saldo suficiente (el mínimo de 50 MXN lo valida money.ts al cotizar). */
+export function canSend(s: ModuleState, amountUsdcCents: number, beneficiaryId: string | null): RelayerErrorCode | null {
   if (s.module !== "active") return "invalid_transition";
-  if (s.bank.status !== "verified") return "bank_not_verified";
+  if (!beneficiaryId) return "bank_not_verified";
+  const b = s.beneficiaries.find((x) => x.id === beneficiaryId);
+  if (!b) return "not_found";
+  if (b.status !== "verified") return "bank_not_verified";
   if (amountUsdcCents > s.balanceUsdcCents) return "insufficient_balance";
   return null;
 }
-export function quoteSend(s: ModuleState, quoteId: string, amountUsdcCents: number): Result {
-  const why = canSend(s, amountUsdcCents);
+export function quoteSend(s: ModuleState, quoteId: string, amountUsdcCents: number, beneficiaryId: string): Result {
+  const why = canSend(s, amountUsdcCents, beneficiaryId);
   if (why) return fail(why);
   if (s.send.status === "confirming" || s.send.status === "submitted") return fail("invalid_transition");
-  return ok({ ...s, send: { status: "quoting", quoteId, receiptId: null } });
+  return ok({ ...s, send: { status: "quoting", quoteId, receiptId: null, beneficiaryId } });
 }
 /** Face ID en curso / Bridge recibiendo la orden: quoting → confirming. */
 export function beginConfirm(s: ModuleState, quoteId: string): Result {
@@ -145,9 +151,9 @@ export function beginConfirm(s: ModuleState, quoteId: string): Result {
 /** Bridge aceptó la transferencia: confirming → submitted; descuenta el saldo. */
 export function submitSend(s: ModuleState, quoteId: string, amountUsdcCents: number, receiptId: string): Result {
   if (s.send.status !== "confirming" || s.send.quoteId !== quoteId) return fail("invalid_transition");
-  const why = canSend(s, amountUsdcCents);
+  const why = canSend(s, amountUsdcCents, s.send.beneficiaryId);
   if (why) return fail(why);
-  return ok({ ...s, balanceUsdcCents: s.balanceUsdcCents - amountUsdcCents, send: { status: "submitted", quoteId, receiptId } });
+  return ok({ ...s, balanceUsdcCents: s.balanceUsdcCents - amountUsdcCents, send: { ...s.send, status: "submitted", quoteId, receiptId } });
 }
 /** SPEI liquidó o falló (reembolsa). */
 export function resolveSend(s: ModuleState, outcome: "completed" | "failed", amountUsdcCents: number): Result {
@@ -158,7 +164,7 @@ export function resolveSend(s: ModuleState, outcome: "completed" | "failed", amo
 /** Cancelar la cotización o cerrar el recibo: vuelve a idle. */
 export function resetSend(s: ModuleState): Result {
   if (s.send.status === "confirming" || s.send.status === "submitted") return fail("invalid_transition");
-  return ok({ ...s, send: { status: "idle", quoteId: null, receiptId: null } });
+  return ok({ ...s, send: { status: "idle", quoteId: null, receiptId: null, beneficiaryId: null } });
 }
 
 // ── Módulo ──────────────────────────────────────────────────────────────────

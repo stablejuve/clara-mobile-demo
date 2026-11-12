@@ -1,10 +1,11 @@
 import * as ImagePicker from "expo-image-picker";
-import { type ReactNode, useState } from "react";
-import { ActionSheetIOS, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, type TextInputProps, View } from "react-native";
+import { useState } from "react";
+import { ActionSheetIOS, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Field, Rows, Select } from "../../ui/form";
 import type { AppCtx } from "../../ctx";
 import { type Key, t } from "../../i18n/es";
-import { Grabber, Group, Hairline, Ico, PrimaryButton, SoftPill, Toggle } from "../../ui/kit";
+import { Grabber, Ico, PrimaryButton, SoftPill, Toggle } from "../../ui/kit";
 import { T } from "../../ui/primitives";
 import { RADIUS, RL } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
@@ -70,45 +71,6 @@ export function KycFormSheet(ctx: AppCtx & { params: SheetParams["kycForm"] }) {
 
 type FormProps = { d: KycDraft; set: React.Dispatch<React.SetStateAction<KycDraft>> };
 
-// ── Campos ──────────────────────────────────────────────────────────────────
-function Field({ label, value, onChange, placeholder, prefix, ...input }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; prefix?: string } & Omit<TextInputProps, "value" | "onChangeText" | "onChange">) {
-  const { c } = useTheme();
-  return (
-    <View style={{ paddingVertical: 10, paddingHorizontal: 16, gap: 4 }}>
-      <T w={400} s={13} color={c.ink55}>{label}</T>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        {prefix ? <T w={500} s={16} mono color={c.ink55}>{prefix}</T> : null}
-        <TextInput value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={c.ink25} selectionColor={c.brand}
-          style={{ flex: 1, padding: 0, fontFamily: "Archivo_500Medium", fontSize: 16, color: c.inkStrong, minHeight: 22 }} {...input} />
-      </View>
-    </View>
-  );
-}
-
-function Select<V extends string>({ label, value, options, labelOf, onChange }: { label: string; value: string; options: readonly V[]; labelOf: (v: V) => string; onChange: (v: V) => void }) {
-  const { c } = useTheme();
-  const [open, setOpen] = useState(false);
-  return (
-    <View>
-      <Pressable onPress={() => setOpen((o) => !o)} accessibilityLabel={`select-${label}`}
-        style={({ pressed }) => ({ paddingVertical: 10, paddingHorizontal: 16, gap: 4, backgroundColor: pressed ? c.ink04 : "transparent" })}>
-        <T w={400} s={13} color={c.ink55}>{label}</T>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <T w={500} s={16} color={value ? c.inkStrong : c.ink25} style={{ flex: 1 }}>{value ? labelOf(value as V) : t("kyc2.choose")}</T>
-          <Ico name="chevronRight" size={18} color={c.ink25} sw={2} style={{ transform: [{ rotate: open ? "270deg" : "90deg" }] }} />
-        </View>
-      </Pressable>
-      {open ? options.map((o) => (
-        <Pressable key={o} onPress={() => { onChange(o); setOpen(false); }} accessibilityLabel={`option-${o}`}
-          style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", paddingVertical: 11, paddingLeft: 28, paddingRight: 16, backgroundColor: pressed ? c.ink08 : c.ink04 })}>
-          <T w={o === value ? 600 : 400} s={15} color={c.inkStrong} style={{ flex: 1 }}>{labelOf(o)}</T>
-          {o === value ? <Ico name="check" size={16} color={c.brand} sw={2.4} /> : null}
-        </Pressable>
-      )) : null}
-    </View>
-  );
-}
-
 /** «19940318» → «1994-03-18» mientras se teclea. */
 const maskDate = (raw: string, parts: number[]) => {
   const d = raw.replace(/\D/g, "").slice(0, parts.reduce((a, b) => a + b, 0));
@@ -121,11 +83,6 @@ const maskPhone = (raw: string) => {
   const d = raw.replace(/\D/g, "").slice(0, 10);
   return [d.slice(0, 2), d.slice(2, 6), d.slice(6, 10)].filter(Boolean).join(" ");
 };
-
-function Rows({ children }: { children: ReactNode[] }) {
-  const items = children.filter(Boolean);
-  return <Group>{items.map((ch, i) => <View key={i}>{i > 0 ? <Hairline /> : null}{ch}</View>)}</Group>;
-}
 
 // ── Secciones ───────────────────────────────────────────────────────────────
 function PersonalForm({ d, set }: FormProps) {

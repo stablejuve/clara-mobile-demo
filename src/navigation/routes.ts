@@ -14,7 +14,7 @@ export type TabParamList = {
   BenefitsTab: NavigatorScreenParams<BenefitsStackParamList> | undefined;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
-export type SheetParams = { onboarding: undefined; kycForm: { section: KycSection }; send: undefined; movement: { id: string } };
+export type SheetParams = { onboarding: undefined; kycForm: { section: KycSection }; send: { beneficiaryId?: string } | undefined; beneficiary: undefined; movement: { id: string } };
 export type RootParamList = { Tabs: NavigatorScreenParams<TabParamList> | undefined } & SheetParams;
 
 export const TAB_ORDER: readonly TabName[] = ["HomeTab", "BenefitsTab", "ProfileTab"];

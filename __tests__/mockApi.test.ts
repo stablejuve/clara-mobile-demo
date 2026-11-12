@@ -76,23 +76,28 @@ test("happy: alta, nómina, tarjeta, teléfono, CLABE y envío completo; eventos
   expect((await api.getModule()).card.status).toBe("frozen");
   await api.freezeCard(false);
 
-  expect(await codeOf(api.addBankAccount("012180001234567890"))).toBe("clabe_invalid");
-  const bank = await api.addBankAccount("012 1800 0123 4567 899");
-  expect(bank).toMatchObject({ status: "pending_verification", bankName: "BBVA México", ownerName: "Ana Torres" });
+  // Al activarse trae las cuentas de la demo, ya verificadas; la propia primero.
+  expect((await api.listBeneficiaries()).map((b) => [b.alias, b.status])).toEqual([["Mi cuenta", "verified"], ["Mamá", "verified"], ["Renta depa", "verified"], ["Gimnasio", "verified"]]);
+  const NEW = { owner: "individual" as const, name: "Luis Gómez", alias: "Luis", email: "", rfc: "", address: { street: "a", city: "b", state: "c", postalCode: "03100" } };
+  expect(await codeOf(api.addBeneficiary({ ...NEW, clabe: "012180001234567890" }))).toBe("clabe_invalid");
+  expect(await codeOf(api.addBeneficiary({ ...NEW, clabe: "012180001234567899" }))).toBe("beneficiary_duplicate");
+  const luis = await api.addBeneficiary({ ...NEW, clabe: "002 1807 0091 2345 673" });
+  expect(luis).toMatchObject({ status: "pending_verification", bankName: "Citibanamex", clabe: "002180700912345673" });
+  expect(await codeOf(api.quoteSend(100_00, luis.id))).toBe("bank_not_verified");
   flush();
-  expect((await api.getModule()).bank.status).toBe("verified");
+  expect((await api.listBeneficiaries()).find((b) => b.id === luis.id)?.status).toBe("verified");
 
-  expect(await codeOf(api.quoteSend(100))).toBe("below_minimum");
-  expect(await codeOf(api.quoteSend(1_000_00))).toBe("insufficient_balance");
-  const quote = await api.quoteSend(100_00);
+  expect(await codeOf(api.quoteSend(100, "ben_mama"))).toBe("below_minimum");
+  expect(await codeOf(api.quoteSend(1_000_00, "ben_mama"))).toBe("insufficient_balance");
+  const quote = await api.quoteSend(100_00, "ben_mama");
   expect(quote).toMatchObject({ amountUsdcCents: 100_00, feeUsdcCents: 50, netUsdcCents: 99_50, amountMxnCents: 1716_38, expiresAt: NOW + 60_000 });
   const receipt = await api.confirmSend(quote.id);
-  expect(receipt).toMatchObject({ status: "submitted", amountMxnCents: 1716_38, bankName: "BBVA México", clabeLast4: "7899", completedAt: null });
+  expect(receipt).toMatchObject({ status: "submitted", amountMxnCents: 1716_38, beneficiaryName: "María Elena Medina Ruiz", bankName: "Banorte", clabeLast4: "2470", completedAt: null });
   expect((await api.getBalance()).usdcCents).toBe(392_75);
   expect(await codeOf(api.confirmSend(quote.id))).toBe("invalid_transition");
   flush();
   expect(await api.getReceipt(receipt.id)).toMatchObject({ status: "completed", completedAt: NOW });
-  expect((await api.listMovements()).map((m) => [m.kind, m.status])).toEqual([["withdrawal", "completed"], ["deposit", "completed"]]);
+  expect((await api.listMovements()).map((m) => [m.kind, m.status, m.toLabel])).toEqual([["withdrawal", "completed", "Mamá"], ["deposit", "completed", undefined]]);
   expect((await api.getEvents()).map((e) => e.type)).toEqual(["kyc.approved", "module.activated", "wallet.ready", "deposit.received", "card.issued", "withdrawal.completed"]);
 
   await api.deactivate();
@@ -134,22 +139,22 @@ test("endorsement_expired: requestCard falla, el estado marca la caducidad, reco
   expect((await api.getModule()).card.status).toBe("requested");
 });
 
-test("bank_verification_failed: la CLABE queda en failed y se puede volver a intentar", async () => {
+test("bank_verification_failed: la cuenta nueva queda en failed y se puede volver a capturar", async () => {
   const { api, flush } = harness("bank_verification_failed");
   await activate(api, flush);
-  await api.addBankAccount("072225009876543217");
+  const NEW = { owner: "self" as const, name: "Ana Torres", alias: "", email: "", rfc: "", address: null, clabe: "072180001122334459" };
+  const b = await api.addBeneficiary(NEW);
   flush();
-  expect((await api.getModule()).bank).toMatchObject({ status: "failed", bankName: "Banorte" });
-  expect(await codeOf(api.quoteSend(100_00))).toBe("bank_not_verified");
-  await api.addBankAccount("014180005556667772");
-  expect((await api.getModule()).bank.status).toBe("pending_verification");
+  expect((await api.listBeneficiaries()).find((x) => x.id === b.id)).toMatchObject({ status: "failed", bankName: "Banorte" });
+  expect(await codeOf(api.quoteSend(100_00, b.id))).toBe("bank_not_verified");
+  const again = await api.addBeneficiary(NEW);
+  expect((await api.listBeneficiaries()).find((x) => x.id === again.id)?.status).toBe("pending_verification");
 });
 
 test("send_failed: el recibo termina en failed con código y el saldo regresa", async () => {
   const { api, flush } = harness("send_failed");
   await activate(api, flush);
-  await api.addBankAccount("646180111222333443"); flush();
-  const q = await api.quoteSend(100_00);
+  const q = await api.quoteSend(100_00, "ben_self");
   const r = await api.confirmSend(q.id);
   flush();
   expect(await api.getReceipt(r.id)).toMatchObject({ status: "failed", failureCode: "send_failed" });

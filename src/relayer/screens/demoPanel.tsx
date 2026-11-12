@@ -29,7 +29,7 @@ export function DemoPanelScreen({ nav, module, faceId, notifications, kyc }: App
       { text: t("demo.resetConfirm"), style: "destructive", onPress: () => { void api.reset().then(() => { kyc.setDraft(EMPTY_DRAFT); nav("benefits"); }); } },
     ]);
   };
-  const rows = [["module", state.module], ["kyc", state.kyc.status], ["wallet", state.wallet.status], ["card", state.card.status], ["pass", state.pass.status], ["bank", state.bank.status], ["send", state.send.status]] as const;
+  const rows = [["module", state.module], ["kyc", state.kyc.status], ["wallet", state.wallet.status], ["card", state.card.status], ["pass", state.pass.status], ["beneficiaries", String(state.beneficiaries.length)], ["send", state.send.status]] as const;
   return (
     <LargeTitleScreen title={t("screen.demoPanel.title")} back={t("rc.name")}>
     <Body gap={14}>

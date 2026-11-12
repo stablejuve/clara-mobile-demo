@@ -1,5 +1,5 @@
 import * as M from "../src/relayer/state";
-import type { ModuleState, Movement } from "../src/relayer/types";
+import type { Beneficiary, ModuleState, Movement } from "../src/relayer/types";
 
 const NOW = Date.parse("2026-11-11T12:00:00Z");
 const H = 60 * 60 * 1000;
@@ -24,9 +24,11 @@ const cardRequested = unwrap(M.requestCard(funded, NOW + H));
 const cardPending = unwrap(M.cardEndorsementPending(cardRequested));
 const cardIssued = unwrap(M.cardIssued(cardPending, "4821", "09/29"));
 const cardAuthorized = unwrap(M.authorizeCard(cardIssued, NOW + 2 * H));
-const bankPending = unwrap(M.addBankAccount(cardAuthorized, "012180001234567899", "BBVA México", "Ana Torres"));
-const bankVerified = unwrap(M.resolveBank(bankPending, "verified"));
-const quoting = unwrap(M.quoteSend(bankVerified, "q_1", 100_00));
+const BENE: Beneficiary = { id: "ben_1", owner: "self", name: "Ana Torres", alias: "", email: "", rfc: "", address: null,
+  clabe: "012180001234567899", bankName: "BBVA México", status: "pending_verification", createdAt: NOW };
+const bankPending = unwrap(M.addBeneficiary(cardAuthorized, BENE));
+const bankVerified = unwrap(M.resolveBeneficiary(bankPending, "ben_1", "verified"));
+const quoting = unwrap(M.quoteSend(bankVerified, "q_1", 100_00, "ben_1"));
 const confirming = unwrap(M.beginConfirm(quoting, "q_1"));
 const submitted = unwrap(M.submitSend(confirming, "q_1", 100_00, "rcpt_1"));
 
@@ -97,26 +99,31 @@ test("congelar/descongelar y agregar al teléfono (exige activa y autorizada)", 
   expect(unwrap(M.freezeCard(frozen, false)).card.status).toBe("active");
 });
 
-test("cuenta bancaria: none | failed → pending_verification → verified | failed", () => {
-  expect(bankPending.bank).toEqual({ status: "pending_verification", clabe: "012180001234567899", bankName: "BBVA México", ownerName: "Ana Torres" });
-  expect(code(M.addBankAccount(bankPending, "1", "b", "o"))).toBe("invalid_transition");
-  expect(code(M.addBankAccount(kycApproved, "1", "b", "o"))).toBe("invalid_transition");
-  const failed = unwrap(M.resolveBank(bankPending, "failed"));
-  expect(failed.bank.status).toBe("failed");
-  expect(code(M.addBankAccount(failed, "072225009876543217", "Banorte", "Ana Torres"))).toBe("ok");
-  expect(code(M.resolveBank(bankVerified, "verified"))).toBe("invalid_transition");
+test("beneficiarios: se agregan en pending_verification → verified | failed; sin CLABE repetida", () => {
+  expect(bankPending.beneficiaries).toEqual([BENE]);
+  expect(code(M.addBeneficiary(bankPending, { ...BENE, id: "ben_2" }))).toBe("beneficiary_duplicate");
+  expect(code(M.addBeneficiary(kycApproved, BENE))).toBe("invalid_transition");
+  const failed = unwrap(M.resolveBeneficiary(bankPending, "ben_1", "failed"));
+  expect(failed.beneficiaries[0].status).toBe("failed");
+  // Una CLABE que falló se puede volver a capturar: reemplaza a la fallida.
+  const retry = unwrap(M.addBeneficiary(failed, { ...BENE, id: "ben_3" }));
+  expect(retry.beneficiaries.map((b) => [b.id, b.status])).toEqual([["ben_3", "pending_verification"]]);
+  expect(code(M.resolveBeneficiary(bankVerified, "ben_1", "verified"))).toBe("invalid_transition");
+  expect(code(M.resolveBeneficiary(bankVerified, "nope", "verified"))).toBe("invalid_transition");
 });
 
 test("envío: precondiciones (bank verified, saldo) y ciclo quoting → confirming → submitted → completed | failed", () => {
-  expect(M.canSend(bankPending, 100_00)).toBe("bank_not_verified");
-  expect(M.canSend(bankVerified, 500_01)).toBe("insufficient_balance");
-  expect(M.canSend(bankVerified, 500_00)).toBeNull();
-  expect(code(M.quoteSend(cardAuthorized, "q", 100_00))).toBe("bank_not_verified");
-  expect(quoting.send).toEqual({ status: "quoting", quoteId: "q_1", receiptId: null });
-  expect(code(M.quoteSend(quoting, "q_2", 50_00))).toBe("ok");                // recotizar reemplaza
+  expect(M.canSend(bankPending, 100_00, "ben_1")).toBe("bank_not_verified");
+  expect(M.canSend(bankVerified, 100_00, null)).toBe("bank_not_verified");
+  expect(M.canSend(bankVerified, 100_00, "nope")).toBe("not_found");
+  expect(M.canSend(bankVerified, 500_01, "ben_1")).toBe("insufficient_balance");
+  expect(M.canSend(bankVerified, 500_00, "ben_1")).toBeNull();
+  expect(code(M.quoteSend(cardAuthorized, "q", 100_00, "ben_1"))).toBe("not_found");
+  expect(quoting.send).toEqual({ status: "quoting", quoteId: "q_1", receiptId: null, beneficiaryId: "ben_1" });
+  expect(code(M.quoteSend(quoting, "q_2", 50_00, "ben_1"))).toBe("ok");                // recotizar reemplaza
   expect(code(M.beginConfirm(quoting, "q_other"))).toBe("invalid_transition");
   expect(code(M.submitSend(quoting, "q_1", 100_00, "r"))).toBe("invalid_transition"); // sin beginConfirm
-  expect(submitted.send).toEqual({ status: "submitted", quoteId: "q_1", receiptId: "rcpt_1" });
+  expect(submitted.send).toEqual({ status: "submitted", quoteId: "q_1", receiptId: "rcpt_1", beneficiaryId: "ben_1" });
   expect(submitted.balanceUsdcCents).toBe(400_00);
   const done = unwrap(M.resolveSend(submitted, "completed", 100_00));
   expect([done.send.status, done.balanceUsdcCents]).toEqual(["completed", 400_00]);
@@ -127,7 +134,7 @@ test("envío: precondiciones (bank verified, saldo) y ciclo quoting → confirmi
   expect(code(M.resetSend(submitted))).toBe("invalid_transition");
   expect(unwrap(M.resetSend(done)).send.status).toBe("idle");
   expect(unwrap(M.resetSend(quoting)).send.status).toBe("idle");
-  expect(code(M.quoteSend(done, "q_3", 100_00))).toBe("ok");
+  expect(code(M.quoteSend(done, "q_3", 100_00, "ben_1"))).toBe("ok");
 });
 
 test("desactivar vuelve a cero; no se puede desactivar lo que está off", () => {

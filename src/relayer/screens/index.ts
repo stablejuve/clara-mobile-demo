@@ -5,3 +5,4 @@ export { KycFormSheet } from "./kycForm";
 export { MovementSheet } from "./movement";
 export { OnboardingSheet } from "./onboarding";
 export { SendSheet } from "./send";
+export { BeneficiaryFormSheet } from "./beneficiaryForm";

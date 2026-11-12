@@ -1,5 +1,5 @@
 import { t } from "../i18n/es";
-import type { ModuleState, Movement } from "./types";
+import type { Movement } from "./types";
 
 // Cómo se lee un movimiento en la lista y en su detalle (diseño «Recibo Minimal»). Puro.
 
@@ -15,13 +15,8 @@ export function dayLabel(at: number, now: number): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
-/** «BBVA México ···· 7899». */
-export function bankLabel(bank: ModuleState["bank"]): string {
-  return `${bank.bankName ?? t("rc.bank")} ···· ${(bank.clabe ?? "").slice(-4)}`;
-}
-
-export function movementTitle(m: Movement, bank: ModuleState["bank"]): string {
-  return m.kind === "deposit" ? (m.fromLabel ?? t("common.employer")) : bankLabel(bank);
+export function movementTitle(m: Movement): string {
+  return m.kind === "deposit" ? (m.fromLabel ?? t("common.employer")) : (m.toLabel ?? t("rc.bank"));
 }
 
 export function movementSub(m: Movement, now: number): string {

@@ -11,7 +11,7 @@ import { LargeTitleScreen } from "../../ui/LargeTitle";
 import { T } from "../../ui/primitives";
 import { RADIUS, RL } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
-import { bankLabel } from "../display";
+import { BeneRow, NewBeneRow, sortBenes } from "./beneRow";
 import { formatCents, usdcToMxnCents } from "../money";
 import type { CardDetails } from "../types";
 
@@ -35,6 +35,7 @@ export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
   const [details, setDetails] = useState<CardDetails | null>(null);
   const [frozenUi, setFrozenUi] = useState(card.status === "frozen");
   const [flipped, setFlipped] = useState(false);
+  const benes = sortBenes(state.beneficiaries);
   const [online, setOnline] = useState(true);
   const [contactless, setContactless] = useState(true);
   const p = kyc.draft.personal;
@@ -138,7 +139,19 @@ export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
                   <CardAction icon="freeze" label={frozenUi ? t("rc.card.unfreeze") : t("rc.card.freezeShort")} on={frozenUi} onPress={() => toggleFreeze(!frozenUi)} a11y="card-freeze" />
                 </View>
                 <Section title={t("rc.card.speiTitle")}>
-                  <ListRow icon="landmark" title={state.bank.clabe ? bankLabel(state.bank) : t("rc.card.speiAdd")} sub={t("rc.card.speiSub")} chevron onPress={() => nav("send")} accessibilityLabel="card-spei" />
+                  {benes.slice(0, 3).map((b) => (
+                    <View key={b.id}>
+                      <BeneRow b={b} onPress={() => nav("send", { beneficiaryId: b.id })} />
+                      <Hairline inset={68} />
+                    </View>
+                  ))}
+                  {benes.length > 3 ? (
+                    <>
+                      <ListRow title={t("rc.bene.manage")} value={String(benes.length)} chevron onPress={() => nav("send")} accessibilityLabel="card-spei-all" />
+                      <Hairline inset={16} />
+                    </>
+                  ) : null}
+                  <NewBeneRow onPress={() => nav("beneficiary")} />
                 </Section>
                 <Section title={t("rc.card.controls")}>
                   <ToggleRow icon="bag" label={t("rc.card.online")} on={online} onChange={setOnline} />
