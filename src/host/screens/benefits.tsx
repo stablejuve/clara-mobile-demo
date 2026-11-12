@@ -4,7 +4,7 @@ import { t } from "../../i18n/es";
 import { cardShadow, Eyebrow, Group, Hairline, Isotype, ListRow, Press } from "../../ui/kit";
 import { LargeTitleScreen } from "../../ui/LargeTitle";
 import { T } from "../../ui/primitives";
-import { RADIUS, RL } from "../../ui/theme";
+import { RADIUS } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
 
 /** Beneficios de la anfitriona: la tarjeta de Recibo (Activar / Abrir) y el resto del catálogo de Acme. */
@@ -22,8 +22,8 @@ export function BenefitsScreen({ nav, module }: AppCtx) {
             </View>
           </View>
           <Press onPress={() => (module.active ? nav("balance") : nav("onboarding"))} accessibilityLabel="benefits-recibo-cta"
-            style={{ height: 46, borderRadius: RADIUS.pill, backgroundColor: scheme === "dark" ? c.brand : RL.carbon, alignItems: "center", justifyContent: "center" }}>
-            <T w={600} s={16} color={scheme === "dark" ? c.onBrand : "#FFFFFF"}>{module.active ? t("rc.open") : t("rc.activate")}</T>
+            style={{ height: 46, borderRadius: RADIUS.pill, backgroundColor: c.brand, alignItems: "center", justifyContent: "center" }}>
+            <T w={600} s={16} color={c.onBrand}>{module.active ? t("rc.open") : t("rc.activate")}</T>
           </Press>
         </View>
         <View style={{ gap: 8 }}>

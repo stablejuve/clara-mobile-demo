@@ -6,7 +6,7 @@ import { formatCents, usdcToMxnCents } from "../../relayer/money";
 import { cardShadow, Eyebrow, Group, Hairline, Ico, ListRow, Press } from "../../ui/kit";
 import { LargeTitleScreen } from "../../ui/LargeTitle";
 import { T } from "../../ui/primitives";
-import { RADIUS, RL } from "../../ui/theme";
+import { RADIUS } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
 
 /** Inicio de la anfitriona: saludo, atajo a Recibo (saldo o «Activar») y lo próximo de Acme. */
@@ -32,8 +32,8 @@ export function HomeScreen({ nav, module, openBalance }: AppCtx) {
           ) : (
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <T w={600} s={17} lh={1.3} color={c.inkStrong}>{t("rc.globalCard")}</T>
-              <View style={{ height: 32, paddingHorizontal: 16, justifyContent: "center", borderRadius: RADIUS.pill, backgroundColor: scheme === "dark" ? c.brand : RL.carbon }}>
-                <T w={600} s={14} color={scheme === "dark" ? c.onBrand : "#FFFFFF"}>{t("rc.activate")}</T>
+              <View style={{ height: 32, paddingHorizontal: 16, justifyContent: "center", borderRadius: RADIUS.pill, backgroundColor: c.brand }}>
+                <T w={600} s={14} color={c.onBrand}>{t("rc.activate")}</T>
               </View>
             </View>
           )}
