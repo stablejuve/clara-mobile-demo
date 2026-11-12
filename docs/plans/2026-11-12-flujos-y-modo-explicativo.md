@@ -131,3 +131,45 @@ propuesta de API para la fase de backend.
 - A3: ¿el límite de gasto va en el alta o al primer uso?
 - A5: ¿quitar los controles o dejarlos como «próximamente»?
 - B: ¿el chip se enciende por default o solo desde el panel?
+
+---
+
+## C. Contrato de endpoints: tarjeta y retiro (qué valida cada uno)
+
+Fuentes Bridge: `platform/cards/overview/{kyc,stripe-issuing,noncustodial,funding-strategies,webhooks}`,
+`platform/cards/additional/fees`, `api-reference/exchange-rates`, `platform/orchestration/transfers/transfer`.
+Patrón de firma igual que relayer-core (`…/prepare` devuelve la transacción a firmar con la passkey, `…/confirm` la manda).
+
+### Hechos de Bridge que cambian el diseño
+- **No hay precio bloqueado.** `GET /v0/exchange_rates?from=usd&to=mxn` regresa `midmarket_rate`, `buy_rate` y `sell_rate`
+  (con la comisión de Bridge incluida). Se actualiza cada ~30 s y Bridge dice que no ofrece un quote con tasa bloqueada.
+  Nuestro `POST /v1/offramp/quote` ya hace esto: tasa en vivo + nuestra comisión. ⇒ El «Precio fijo · 60 s» de la demo
+  **no es real**: debe decir «Tipo de cambio estimado» y recotizar justo antes de firmar.
+- **La tarjeta cobra en USD** (`currency=usd`) y gasta USDC 1:1. Una compra en pesos la convierte **la red Visa** (tasa de la
+  red + nuestra FX fee configurable); no llamamos a ningún endpoint de precios para autorizarla. El MXN que mostramos de la
+  compra sale del webhook (`merchant_amount` / `fees.fx_fee`).
+- **Quien valida la compra es Bridge**, al momento de la autorización: que la wallet tenga el `approve` vigente al contrato del
+  programa y **saldo USDC suficiente**; si sí, jala los fondos on-chain *just-in-time*. Si no, la rechaza.
+
+### Tarjeta
+| # | Endpoint (nuestro) | Valida | Llama a |
+|---|---|---|---|
+| T1 | `POST /v1/end-users/{id}/card` (lo dispara el backend al aprobarse el KYC) | endorsement `cards` = approved y < 24 h; hay `stripe_cardholder_id`; wallet creada; no hay otra tarjeta activa | Stripe `POST /v1/issuing/cards` `type=virtual, status=active, currency=usd, crypto_wallet{chain:base, currency:usdc, type:standard, address}` |
+| T2 | `POST …/card/allowance/prepare` `{ amount_usdc }` | tarjeta activa; monto > 0 | Base RPC: arma `approve(spender_programa, monto)` |
+| T3 | `POST …/card/allowance/confirm` `{ signed_tx }` | firma de la passkey del usuario | Turnkey firma/manda; lee `allowance()` |
+| T4 | `GET …/card` | — | Stripe card + Base `balanceOf(USDC)` y `allowance()` ⇒ «Disponible para gastar» = min(saldo, allowance) |
+| T5 | `PATCH …/card` `{ status: active|inactive }` | dueño de la tarjeta | Stripe `POST /v1/issuing/cards/{id}` |
+| T6 | `POST …/card/reveal` | Face ID / sesión | Stripe ephemeral key → Issuing Elements (PAN/CVV nunca pasan por nosotros) |
+| T7 | `POST …/card/provisioning` | dispositivo | Stripe push provisioning |
+| T8 | `POST /hooks/stripe` | firma de Stripe | ← `issuing_authorization.created/updated`, `issuing_transaction.created`: guarda el movimiento (MXN, USD, FX fee), avisa a la app y manda `card.transaction` a la empresa |
+
+### Retiro a cuenta (SPEI)
+| # | Endpoint (nuestro) | Valida | Llama a |
+|---|---|---|---|
+| R1 | `POST /v1/offramp/quote` `{ source_currency: usdc, source_amount | destination_amount, destination_currency: mxn, destination_payment_rail: spei }` (**existe**) | monto ≥ mínimo (50 MXN); moneda/riel soportados | Bridge `GET /v0/exchange_rates?from=usd&to=mxn` (`sell_rate`) + nuestra comisión. Estimación, no bloqueo |
+| R2 | `POST …/withdrawals/prepare` `{ beneficiary_id, amount_usdc }` | beneficiario con external account **verificada**; saldo on-chain ≥ monto; mínimo; **recotiza** (R1) | Bridge `POST /v0/transfers` `source{payment_rail:base, currency:usdc, from_address}` → `destination{payment_rail:spei, currency:mxn, external_account_id}` ⇒ `source_deposit_instructions.to_address`; arma la transferencia USDC a esa dirección |
+| R3 | `POST …/withdrawals/confirm` `{ transfer_id, signed_tx }` | firma de la passkey; el transfer sigue `awaiting_funds` | Turnkey manda el USDC a Bridge |
+| R4 | `GET /v1/payouts/{reference}/status` (**existe**, nivel integrador) | — | Bridge `GET /v0/transfers/{id}` |
+| R5 | `POST /hooks/bridge` (**existe**) | firma de Bridge | ← `transfer` updates: `payment_processed` ⇒ completado con folio SPEI; `returned`/`refunded` ⇒ el USDC regresa a la wallet |
+
+El MXN final lo fija Bridge cuando recibe el USDC (tasa de ese momento). Por eso la app muestra «≈ $X MXN (estimado)» y no promete una cifra exacta.

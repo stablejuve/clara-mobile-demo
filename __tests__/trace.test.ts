@@ -9,7 +9,7 @@ test("catálogo: cada entrada tiene ruta, descripción y documentación; las por
   }
   // Los que ya existen en relayer-core.
   expect(ENDPOINTS.quoteSend).toMatchObject({ method: "POST", path: "/v1/offramp/quote", status: "exists" });
-  expect(ENDPOINTS.confirmSend).toMatchObject({ method: "POST", path: "/v1/payouts", status: "exists" });
+  expect(ENDPOINTS.confirmSend).toMatchObject({ method: "POST", path: "/v1/end-users/{id}/withdrawals", status: "planned", nearest: "POST /v1/payouts (nivel integrador)" });
   expect(ENDPOINTS.kycVerdict).toMatchObject({ method: "HOOK", path: "/hooks/bridge" });
 });
 

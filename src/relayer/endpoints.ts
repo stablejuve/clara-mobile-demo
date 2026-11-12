@@ -86,14 +86,14 @@ export const ENDPOINTS: Record<TraceKey, Endpoint> = {
     docs: [RELAYER, BRIDGE("api-reference/external-accounts/create-a-new-external-account", "Bridge · External accounts"), BRIDGE("platform/orchestration/external-accounts/verification-of-payee", "Bridge · Verificación del titular")],
   },
   quoteSend: {
-    method: "POST", path: "/v1/offramp/quote", summary: "Cotiza USDC → MXN con precio fijo por 60 s (tipo de cambio y comisión).",
-    upstream: ["Bridge GET /v0/exchange_rates?from=usdc&to=mxn"], status: "exists",
+    method: "POST", path: "/v1/offramp/quote", summary: "Estima cuántos pesos llegan: tipo de cambio en vivo de Bridge (sell_rate) + nuestra comisión. Valida el mínimo; Bridge no bloquea la tasa.",
+    upstream: ["Bridge GET /v0/exchange_rates?from=usd&to=mxn (se actualiza ~30 s)"], status: "exists",
     docs: [RELAYER, BRIDGE("api-reference/exchange-rates/get-current-exchange-rate-between-two-currencies", "Bridge · Tipo de cambio")],
   },
   confirmSend: {
-    method: "POST", path: "/v1/payouts", summary: "Ejecuta el retiro: la wallet firma el envío de USDC y Bridge paga en pesos por SPEI a la cuenta elegida.",
-    upstream: ["Turnkey firma la transferencia USDC", "Bridge POST /v0/transfers (usdc/base → mxn/spei)"], status: "exists",
-    docs: [RELAYER, BRIDGE("api-reference/transfers/create-a-transfer", "Bridge · Transfers")],
+    method: "POST", path: `${EU}/withdrawals`, summary: "Valida cuenta verificada, saldo USDC on-chain y mínimo; recotiza; crea el transfer en Bridge y la wallet firma el envío de USDC a la dirección de depósito de Bridge, que paga en pesos por SPEI.",
+    upstream: ["Bridge GET /v0/exchange_rates (recotiza)", "Bridge POST /v0/transfers (base/usdc → spei/mxn) → source_deposit_instructions", "Turnkey firma la transferencia USDC"], status: "planned", nearest: "POST /v1/payouts (nivel integrador)",
+    docs: [RELAYER, BRIDGE("api-reference/transfers/create-a-transfer", "Bridge · Transfers"), BRIDGE("platform/orchestration/transfers/transfer", "Bridge · Depósito al transfer")],
   },
   getReceipt: { method: "GET", path: "/v1/payouts/{reference}/status", summary: "Estado y folio del retiro.", upstream: ["Bridge GET /v0/transfers/{id}"], status: "exists", docs: [RELAYER], quiet: true },
   getEvents: { method: "GET", path: "/v1/webhooks", summary: "Eventos que Relayer manda a la empresa (alta, depósitos, tarjeta, retiros).", upstream: [], status: "exists", docs: [RELAYER], quiet: true },
@@ -111,7 +111,7 @@ export const ENDPOINTS: Record<TraceKey, Endpoint> = {
   beneficiaryVerified: { method: "HOOK", path: "/hooks/bridge", summary: "Bridge confirma (o rechaza) al titular de la cuenta CLABE.", upstream: ["← Bridge webhook external_account.updated"], status: "exists", docs: [BRIDGE("platform/orchestration/external-accounts/verification-of-payee", "Bridge · Verificación del titular")] },
   speiSettled: { method: "HOOK", path: "/hooks/bridge", summary: "El SPEI liquidó (o falló y se reembolsa el saldo).", upstream: ["← Bridge webhook transfer.updated"], status: "exists", docs: [BRIDGE("platform/orchestration/transfers/transfer-states", "Bridge · Estados del transfer")] },
   payrollDeposit: { method: "HOOK", path: "/hooks/turnkey", summary: "Llega USDC de la empresa a la wallet; Relayer avisa a la app y manda deposit.received a la empresa.", upstream: ["← on-chain (Base) vía Turnkey"], status: "exists", docs: [RELAYER, TURNKEY] },
-  cardTransaction: { method: "HOOK", path: "/hooks/stripe", summary: "Compra con la tarjeta: Stripe autoriza contra el límite de gasto y el saldo de la wallet.", upstream: ["← Stripe webhook issuing_transaction.created"], status: "planned", docs: [BRIDGE("platform/cards/overview/webhooks", "Bridge · Webhooks de tarjeta")] },
+  cardTransaction: { method: "HOOK", path: "/hooks/stripe", summary: "Compra con la tarjeta: Bridge valida que exista el approve y haya USDC suficiente y jala los fondos on-chain al momento. Visa convierte MXN→USD; la tarjeta gasta USDC 1:1.", upstream: ["← Stripe webhook issuing_authorization.created / issuing_transaction.created"], status: "planned", docs: [BRIDGE("platform/cards/overview/webhooks", "Bridge · Webhooks de tarjeta")] },
 };
 
 export const isBackground = (k: TraceKey): k is BackgroundKey => ENDPOINTS[k].method === "HOOK";
