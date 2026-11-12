@@ -22,8 +22,8 @@ export function BenefitsScreen({ nav, module }: AppCtx) {
             </View>
           </View>
           <Press onPress={() => (module.active ? nav("balance") : nav("onboarding"))} accessibilityLabel="benefits-recibo-cta"
-            style={{ height: 46, borderRadius: RADIUS.pill, backgroundColor: RL.carbon, alignItems: "center", justifyContent: "center" }}>
-            <T w={600} s={16} color="#FFFFFF">{module.active ? t("rc.open") : t("rc.activate")}</T>
+            style={{ height: 46, borderRadius: RADIUS.pill, backgroundColor: scheme === "dark" ? c.brand : RL.carbon, alignItems: "center", justifyContent: "center" }}>
+            <T w={600} s={16} color={scheme === "dark" ? c.onBrand : "#FFFFFF"}>{module.active ? t("rc.open") : t("rc.activate")}</T>
           </Press>
         </View>
         <View style={{ gap: 8 }}>

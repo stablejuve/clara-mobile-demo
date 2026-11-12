@@ -32,8 +32,8 @@ export function HomeScreen({ nav, module, openBalance }: AppCtx) {
           ) : (
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <T w={600} s={17} lh={1.3} color={c.inkStrong}>{t("rc.globalCard")}</T>
-              <View style={{ height: 32, paddingHorizontal: 16, justifyContent: "center", borderRadius: RADIUS.pill, backgroundColor: RL.carbon }}>
-                <T w={600} s={14} color="#FFFFFF">{t("rc.activate")}</T>
+              <View style={{ height: 32, paddingHorizontal: 16, justifyContent: "center", borderRadius: RADIUS.pill, backgroundColor: scheme === "dark" ? c.brand : RL.carbon }}>
+                <T w={600} s={14} color={scheme === "dark" ? c.onBrand : "#FFFFFF"}>{t("rc.activate")}</T>
               </View>
             </View>
           )}
