@@ -170,9 +170,9 @@ export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
                   </View>
                 ) : (
                   <Press onPress={() => { void addWallet(); }} accessibilityLabel="card-add-wallet"
-                    style={{ height: 52, borderRadius: RADIUS.pill, backgroundColor: c.inkStrong, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                    <Ico name="wallet" size={20} color={c.page} sw={1.9} />
-                    <T w={600} s={16} color={c.page}>{t("rc.card.addWallet", { wallet: walletName })}</T>
+                    style={{ height: 52, borderRadius: RADIUS.pill, backgroundColor: c.cta, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                    <Ico name="wallet" size={20} color={c.onCta} sw={1.9} />
+                    <T w={600} s={16} color={c.onCta}>{t("rc.card.addWallet", { wallet: walletName })}</T>
                   </Press>
                 )}
                 {error ? <T w={400} s={14} lh={1.4} color={c.error} style={{ textAlign: "center" }}>{error}</T> : null}
