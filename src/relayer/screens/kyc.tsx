@@ -3,6 +3,7 @@ import { View } from "react-native";
 import type { AppCtx } from "../../ctx";
 import { useAction } from "../../hooks/useAction";
 import { t } from "../../i18n/es";
+import { useForward } from "../../navigation/useForward";
 import type { KycLinks } from "../types";
 import { Body, Btn, Card, Chip, Icon, type IconName, Row, StatusCard, T, Tag, Warn } from "../../ui/primitives";
 import { useTheme } from "../../ui/ThemeProvider";
@@ -15,6 +16,7 @@ const NEED: readonly { key: "id" | "selfie" | "address"; icon: IconName }[] = [{
 const RETURN_FALLBACK_MS = 1500;
 
 export function KycScreen({ nav, module, kycReturn }: AppCtx) {
+  const { focused, forward } = useForward();
   const { c } = useTheme();
   const { state, api } = module;
   const [step, setStep] = useState<Step>(state.kyc.status === "incomplete" ? "document" : "intro");
@@ -22,7 +24,7 @@ export function KycScreen({ nav, module, kycReturn }: AppCtx) {
   const { busy, error, run } = useAction();
   const kycRef = useRef(state.kyc.status);
   kycRef.current = state.kyc.status;
-  useEffect(() => { if (state.kyc.status === "approved") nav("passkey"); }, [state.kyc.status, nav]);
+  useEffect(() => { if (focused && state.kyc.status === "approved") forward("passkey"); }, [state.kyc.status, forward, focused]);
 
   const open = async () => {
     const l = await run(() => api.startKyc());

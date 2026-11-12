@@ -2,21 +2,23 @@ import { useEffect } from "react";
 import type { AppCtx } from "../../ctx";
 import { useAction } from "../../hooks/useAction";
 import { t } from "../../i18n/es";
+import { useForward } from "../../navigation/useForward";
 import { shortAddress } from "../format";
 import { Body, Btn, Card, KVList, StatusCard, T, Tag } from "../../ui/primitives";
 import { useTheme } from "../../ui/ThemeProvider";
 import { PoweredBy } from "./PoweredBy";
 
 export function CardAuthorizeScreen({ nav, module, faceId }: AppCtx) {
+  const { focused, forward } = useForward();
   const { c } = useTheme();
   const { state, api } = module;
   const { busy, error, run, setError } = useAction();
-  useEffect(() => { if (state.card.authorizedAt !== null) nav("card"); }, [state.card.authorizedAt, nav]);
+  useEffect(() => { if (focused && state.card.authorizedAt !== null) forward("card"); }, [state.card.authorizedAt, forward, focused]);
   const authorize = async () => {
     const ok = await faceId.authenticate(t("cardAuthorize.prompt"));
     if (!ok) { setError(t("errors.passkey_cancelled")); return; }
     const s = await run(() => api.authorizeCard());
-    if (s) nav("card");
+    if (s) forward("card");
   };
   return (
     <Body gap={14}>

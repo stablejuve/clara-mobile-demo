@@ -5,6 +5,7 @@ import { useAction } from "../../hooks/useAction";
 import { useNow } from "../../hooks/useNow";
 import { errorCopy } from "../../i18n/errors";
 import { t } from "../../i18n/es";
+import { useForward } from "../../navigation/useForward";
 import { formatCents, formatMxn, formatRate, formatUsdc, MIN_SEND_MXN_CENTS, mxnToUsdcCents, parseAmount, quoteFor, usdcToMxnCents } from "../money";
 import type { Quote } from "../types";
 import { Body, Btn, Card, Chip, Field, KVList, Segmented, T, Tag } from "../../ui/primitives";
@@ -14,6 +15,7 @@ import { PoweredBy } from "./PoweredBy";
 type Unit = "mxn" | "usdc";
 
 export function SendScreen({ nav, module, faceId }: AppCtx) {
+  const { focused, forward } = useForward();
   const { c } = useTheme();
   const { state, api } = module;
   const { busy, error, run, setError } = useAction();
@@ -21,7 +23,7 @@ export function SendScreen({ nav, module, faceId }: AppCtx) {
   const [input, setInput] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
   const now = useNow(1000);
-  useEffect(() => { if (state.bank.status !== "verified") nav("bankAccount"); }, [state.bank.status, nav]);
+  useEffect(() => { if (focused && state.bank.status !== "verified") forward("bankAccount"); }, [state.bank.status, forward, focused]);
 
   const balance = state.balanceUsdcCents;
   const cents = parseAmount(input);

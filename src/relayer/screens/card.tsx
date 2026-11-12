@@ -3,6 +3,7 @@ import { View } from "react-native";
 import type { AppCtx } from "../../ctx";
 import { useAction } from "../../hooks/useAction";
 import { t } from "../../i18n/es";
+import { useForward } from "../../navigation/useForward";
 import { formatWhen } from "../format";
 import type { CardDetails } from "../types";
 import { Body, Btn, Card, KVList, Row, T, Warn } from "../../ui/primitives";
@@ -11,13 +12,14 @@ import { CardArt } from "./cardRequest";
 import { PoweredBy } from "./PoweredBy";
 
 export function CardScreen({ nav, module }: AppCtx) {
+  const { focused, forward } = useForward();
   const { c } = useTheme();
   const { state, api } = module;
   const { busy, error, run } = useAction();
   const [details, setDetails] = useState<CardDetails | null>(null);
   const [revealed, setRevealed] = useState(false);
   const frozen = state.card.status === "frozen";
-  useEffect(() => { if (state.card.status === "none" || state.card.status === "endorsement_expired") nav("cardRequest"); }, [state.card.status, nav]);
+  useEffect(() => { if (focused && (state.card.status === "none" || state.card.status === "endorsement_expired")) forward("cardRequest"); }, [forward, state.card.status, nav, focused]);
   // Los datos completos (PAN, CVV) se piden al api pero sólo se pintan con «Ver datos».
   useEffect(() => {
     let stale = false;

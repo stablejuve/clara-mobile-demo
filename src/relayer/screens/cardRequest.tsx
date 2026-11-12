@@ -3,6 +3,7 @@ import { View } from "react-native";
 import type { AppCtx } from "../../ctx";
 import { useAction } from "../../hooks/useAction";
 import { t } from "../../i18n/es";
+import { useForward } from "../../navigation/useForward";
 import { Body, Btn, StatusCard, Steps, T, Tag, Warn } from "../../ui/primitives";
 import { DARK, RADIUS, RL } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
@@ -27,11 +28,12 @@ export function CardArt({ last4, expiry, holder, number, cvv, dim }: { last4: st
 }
 
 export function CardRequestScreen({ nav, module }: AppCtx) {
+  const { focused, forward } = useForward();
   const { c } = useTheme();
   const { state, api } = module;
   const { busy, error, code, run } = useAction();
   const st = state.card.status;
-  useEffect(() => { if (st === "active" || st === "frozen") nav(state.card.authorizedAt ? "card" : "cardAuthorize"); }, [st, state.card.authorizedAt, nav]);
+  useEffect(() => { if (focused && (st === "active" || st === "frozen")) forward(state.card.authorizedAt ? "card" : "cardAuthorize"); }, [focused, forward, st, state.card.authorizedAt, nav]);
   const request = async () => { await run(() => api.requestCard()); };
   const reconfirm = async () => { const s = await run(() => api.reconfirmKyc()); if (s) nav("kycPending"); };
   return (
