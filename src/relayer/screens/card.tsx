@@ -1,19 +1,19 @@
 import { BlurView } from "expo-blur";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Platform, Pressable, View } from "react-native";
+import { Animated, Platform, Pressable, useWindowDimensions, View } from "react-native";
 import type { AppCtx } from "../../ctx";
 import { useAction } from "../../hooks/useAction";
 import { t } from "../../i18n/es";
+import { CARD_RATIO, CardBack, CardFront, cardLift, cardRadius } from "../../ui/CardArt";
 import { useFaceIdHud } from "../../ui/FaceIdHud";
-import { EASE_IOS, Group, Ico, LARGE_GAP, PrimaryButton, Press, Spinner, Toggle } from "../../ui/kit";
+import { EASE_IOS, Group, Ico, LARGE_GAP, PrimaryButton, Press, Toggle } from "../../ui/kit";
 import { LargeTitleScreen } from "../../ui/LargeTitle";
 import { T } from "../../ui/primitives";
-import { F, RADIUS, RL } from "../../ui/theme";
+import { RADIUS, RL } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
 import type { CardDetails } from "../types";
 
 type Phase = "none" | "issuing" | "authorize" | "expired" | "reconfirming" | "active";
-const CARD_H = 228;
 
 /** Tarjeta Visa virtual: pedir → emitiendo → autorizar con Face ID → tarjeta que se voltea, se congela y va a la Wallet. */
 export function CardScreen({ module, faceId }: AppCtx) {
@@ -22,6 +22,9 @@ export function CardScreen({ module, faceId }: AppCtx) {
   const { error, run } = useAction();
   const hud = useFaceIdHud(faceId);
   const card = state.card;
+  const { width: winW } = useWindowDimensions();
+  const cardW = Math.min(winW, 440) - 40;
+  const cardH = cardW / CARD_RATIO;
   const phase: Phase =
     card.status === "none" ? "none"
       : card.status === "requested" || card.status === "endorsement_pending" ? "issuing"
@@ -73,9 +76,8 @@ export function CardScreen({ module, faceId }: AppCtx) {
         <View style={{ paddingHorizontal: 20 }}>
           {phase !== "active" ? (
             <>
-              <View style={{ height: CARD_H, borderRadius: RADIUS.card, borderWidth: 1.5, borderStyle: "dashed", borderColor: c.ink25, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                {busy ? <Spinner size={18} color={c.ink40} /> : null}
-                <T w={500} s={15} color={c.ink40}>{phase === "issuing" ? t("rc.card.issuing") : t("rc.card.ghost")}</T>
+              <View style={[cardLift, { width: cardW, borderRadius: cardRadius(cardW) }]}>
+                <CardFront width={cardW} brand={t("rc.name")} mode={phase === "issuing" ? "issuing" : phase === "expired" || phase === "reconfirming" ? "muted" : "preview"} />
               </View>
               <View style={{ paddingTop: 32, paddingHorizontal: 4, gap: 6 }}>
                 <T w={600} s={22} lh={1.2} ls={-0.015} color={c.inkStrong} style={{ textAlign: "center" }}>{title}</T>
@@ -95,29 +97,24 @@ export function CardScreen({ module, faceId }: AppCtx) {
                   { rotateX: enter.interpolate({ inputRange: [0, 1], outputRange: ["18deg", "0deg"] }) },
                 ],
               }}>
-                <Pressable onPress={() => { if (!frozenUi) setFlipped((f) => !f); }} accessibilityLabel="card-flip" style={{ height: CARD_H }}>
+                <Pressable onPress={() => { if (!frozenUi) setFlipped((f) => !f); }} accessibilityLabel="card-flip" style={[cardLift, { width: cardW, height: cardH, borderRadius: cardRadius(cardW) }]}>
                   <Animated.View style={[faceStyle, { transform: [{ perspective: 1200 }, { rotateY: frontRot }] }]}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <T w={600} s={17} ls={-0.01} color={RL.cream}>{t("rc.name")}</T>
-                      <View style={{ opacity: 0.7 }}><Ico name="nfc" size={22} color={RL.cream} sw={1.8} /></View>
-                    </View>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
-                      <T w={500} s={15} ls={0.08} mono color={RL.cream} style={{ opacity: 0.85 }}>•••• {details?.last4 ?? card.last4 ?? ""}</T>
-                      <T w={800} s={24} ls={0.02} color={RL.cream} style={{ fontFamily: F.xb }}>VISA</T>
-                    </View>
-                    <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: frost, alignItems: "center", justifyContent: "center" }}>
-                      <BlurView intensity={8} tint="light" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
-                      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: RL.frost }} />
-                      <Ico name="freeze" size={44} color={RL.petrolDeep} sw={1.6} />
-                    </Animated.View>
+                    <CardFront width={cardW} brand={t("rc.name")} mode="active" last4={details?.last4 ?? card.last4} holder={details?.holder}>
+                      <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: frost, alignItems: "center", justifyContent: "center" }}>
+                        <BlurView intensity={8} tint="light" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+                        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: RL.frost }} />
+                        <Ico name="freeze" size={44} color={RL.petrolDeep} sw={1.6} />
+                      </Animated.View>
+                    </CardFront>
                   </Animated.View>
                   <Animated.View style={[faceStyle, { transform: [{ perspective: 1200 }, { rotateY: backRot }] }]}>
-                    <T w={500} s={10.5} ls={0.08} mono color={RL.cream} style={{ opacity: 0.6 }}>{(details?.holder ?? "").toUpperCase()}</T>
-                    <T w={500} s={21} ls={0.06} mono color={RL.cream}>{details?.number ?? ""}</T>
-                    <View style={{ flexDirection: "row", gap: 36 }}>
-                      <CardField k={t("rc.card.expires")} v={details?.expiry ?? ""} />
-                      <CardField k="CVV" v={details?.cvv ?? ""} />
-                    </View>
+                    <CardBack width={cardW}>
+                      <T w={500} s={20} ls={0.06} mono color={RL.cream}>{details?.number ?? ""}</T>
+                      <View style={{ flexDirection: "row", gap: 36 }}>
+                        <CardField k={t("rc.card.expires")} v={details?.expiry ?? ""} />
+                        <CardField k="CVV" v={details?.cvv ?? ""} />
+                      </View>
+                    </CardBack>
                   </Animated.View>
                 </Pressable>
               </Animated.View>
@@ -155,10 +152,7 @@ export function CardScreen({ module, faceId }: AppCtx) {
   );
 }
 
-const faceStyle = {
-  position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0, backfaceVisibility: "hidden" as const,
-  borderRadius: RADIUS.card, backgroundColor: RL.petrolDeep, padding: 22, justifyContent: "space-between" as const, overflow: "hidden" as const,
-};
+const faceStyle = { position: "absolute" as const, top: 0, left: 0, backfaceVisibility: "hidden" as const };
 
 function CardField({ k, v }: { k: string; v: string }) {
   return (

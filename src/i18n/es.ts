@@ -486,7 +486,6 @@ export const es = {
   "rc.wallet.btn": "Usar Face ID",
   "rc.wallet.creating": "Creando…",
   "rc.wallet.reason": "Crear tu wallet de Recibo",
-  "rc.card.ghost": "Visa virtual",
   "rc.card.title": "Tu Visa virtual",
   "rc.card.sub": "Gasta directo de tu saldo.",
   "rc.card.request": "Pedir tarjeta",
