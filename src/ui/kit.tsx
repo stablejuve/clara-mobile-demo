@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, type StyleProp, View, type ViewStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
+import { t } from "../i18n/es";
 import { T } from "./primitives";
 import { RADIUS, RL } from "./theme";
 import { useTheme } from "./ThemeProvider";
@@ -147,7 +148,7 @@ export function Eyebrow({ children, color, style }: { children: string; color?: 
 /** «powered by Relayer»: mono 9.5, tracking .1em, ink-25. */
 export function PoweredLabel() {
   const { c } = useTheme();
-  return <T w={500} s={9.5} ls={0.1} mono color={c.ink25} style={{ textAlign: "center" }}>POWERED BY RELAYER</T>;
+  return <T w={500} s={9.5} ls={0.1} mono color={c.ink25} style={{ textAlign: "center" }}>{t("common.poweredBy").toUpperCase()}</T>;
 }
 
 /** Grupo inset: tarjeta blanca radio 6 con filas; `Hairline` entre filas (0.5 px, ink-15, con sangría). */

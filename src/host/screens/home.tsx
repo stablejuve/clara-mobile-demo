@@ -14,7 +14,7 @@ export function HomeScreen({ nav, module, openBalance }: AppCtx) {
   const { c, scheme } = useTheme();
   const shown = useTween(module.state.balanceUsdcCents);
   return (
-    <LargeTitleScreen title={t("home.greeting")} smallTitle={t("tab.home")}>
+    <LargeTitleScreen title={t("home.greeting")} smallTitle={t("tab.home")} brand={t("home.greetingTag")}>
       <View style={{ paddingHorizontal: 16, gap: 22 }}>
         <Press scale={0.98} onPress={() => (module.active ? openBalance() : nav("onboarding"))} accessibilityLabel="home-recibo"
           style={[{ gap: 14, padding: 20, borderRadius: RADIUS.card, backgroundColor: c.card }, cardShadow(scheme)]}>

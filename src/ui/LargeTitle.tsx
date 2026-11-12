@@ -3,7 +3,7 @@ import { BlurView } from "expo-blur";
 import { type ReactNode, useRef } from "react";
 import { Animated, Pressable, type StyleProp, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ico } from "./kit";
+import { Ico, Isotype } from "./kit";
 import { T } from "./primitives";
 import { useTheme } from "./ThemeProvider";
 
@@ -17,8 +17,8 @@ export const PAGE_BOTTOM = 120;
  * el fondo de la barra aparece en los primeros 12 px y el título pequeño entre 30 y 44 px.
  * `smallTitle` puede diferir del grande (Inicio: «Hola, Ana» → «Inicio»). `back` = etiqueta del botón «‹ Atrás».
  */
-export function LargeTitleScreen({ title, smallTitle, back, titleGap = 18, children, contentStyle }: {
-  title: string; smallTitle?: string; back?: string; titleGap?: number; children: ReactNode; contentStyle?: StyleProp<ViewStyle>;
+export function LargeTitleScreen({ title, smallTitle, back, brand, titleGap = 18, children, contentStyle }: {
+  title: string; smallTitle?: string; back?: string; /** Marca de la app arriba del título (sólo Inicio). */ brand?: string; titleGap?: number; children: ReactNode; contentStyle?: StyleProp<ViewStyle>;
 }) {
   const { c, scheme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -37,6 +37,12 @@ export function LargeTitleScreen({ title, smallTitle, back, titleGap = 18, child
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y } } }], { useNativeDriver: true })}
       >
+        {brand ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingBottom: 8 }}>
+            <Isotype box={24} glyph={13} radius={6} />
+            <T w={600} s={15} ls={-0.01} color={c.inkStrong}>{brand}</T>
+          </View>
+        ) : null}
         <View style={{ paddingHorizontal: 20, paddingBottom: titleGap }}>
           <T w={700} s={34} lh={1.1} ls={-0.025} color={c.inkStrong}>{title}</T>
         </View>

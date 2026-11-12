@@ -16,7 +16,8 @@ import { kycRowSummary } from "./kycForm";
 
 const PAGES = 4;
 const BRIDGE_TERMS = "https://www.bridge.xyz/legal";
-const RELAYER_TERMS = "https://relayer.fi";
+/** Proveedor de la tecnología en esta demo (look and feel de Relayer, infraestructura presentada como de Clara). */
+const PROVIDER_TERMS = "https://www.clara.com";
 
 /** Hoja de alta del diseño: carril de 4 páginas con segmentos de progreso arriba. */
 export function OnboardingSheet(ctx: AppCtx) {
@@ -124,7 +125,7 @@ function TermsPage({ ctx, next }: { ctx: AppCtx; next: () => void }) {
       <Group style={{ marginTop: 32 }}>
         {link("Bridge", t("rc.terms.bridge"), BRIDGE_TERMS)}
         <Hairline />
-        {link("Relayer", t("rc.terms.relayer"), RELAYER_TERMS)}
+        {link("Clara", t("rc.terms.relayer"), PROVIDER_TERMS)}
       </Group>
       <Group style={{ marginTop: 22 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 16, minHeight: 52 }}>

@@ -62,7 +62,7 @@ test("happy: alta, nómina, tarjeta, teléfono, CLABE y envío completo; eventos
   expect(bal).toEqual({ usdcCents: 492_75, mxnCents: 8_499_94, rate: 17.25 });
   const movs = await api.listMovements();
   expect(movs).toHaveLength(1);
-  expect(movs[0]).toMatchObject({ kind: "deposit", fromLabel: "Acme Beneficios", reference: DEFAULT_DEPOSIT.reference, amountUsdcCents: 492_75 });
+  expect(movs[0]).toMatchObject({ kind: "deposit", fromLabel: "Acme", reference: DEFAULT_DEPOSIT.reference, amountUsdcCents: 492_75 });
 
   expect(await codeOf(api.requestCard())).toBe("invalid_transition");
   expect((await api.getModule()).card).toMatchObject({ status: "active", last4: "4821", authorizedAt: null });

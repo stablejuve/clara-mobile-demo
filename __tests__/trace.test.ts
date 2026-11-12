@@ -5,7 +5,7 @@ test("catálogo: cada entrada tiene ruta, descripción y documentación; las por
   for (const [k, e] of Object.entries(ENDPOINTS)) {
     expect([k, e.path.startsWith("/")]).toEqual([k, true]);
     expect([k, e.summary.length > 10]).toEqual([k, true]);
-    expect([k, e.docs.length > 0 && e.docs.every((d) => d.url.startsWith("https://"))]).toEqual([k, true]);
+    expect([k, (e.quiet || e.docs.length > 0) && e.docs.every((d) => d.url.startsWith("https://"))]).toEqual([k, true]);
   }
   // Los que ya existen en relayer-core.
   expect(ENDPOINTS.quoteSend).toMatchObject({ method: "POST", path: "/v1/offramp/quote", status: "exists" });

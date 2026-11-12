@@ -97,7 +97,7 @@ function Detail({ hit, onClose }: { hit: TraceHit; onClose: () => void }) {
           </Section>
         ) : null}
         {e.nearest ? <Section label={t("trace.nearest")}><T w={400} s={12.5} mono color={INK_DIM}>{e.nearest}</T></Section> : null}
-        <Section label={t("trace.docs")}>
+        {e.docs.length > 0 ? <Section label={t("trace.docs")}>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {e.docs.map((d) => (
               <Pressable key={d.url} onPress={() => { void Linking.openURL(d.url); }} accessibilityLabel={`trace-doc-${d.label}`}
@@ -107,7 +107,7 @@ function Detail({ hit, onClose }: { hit: TraceHit; onClose: () => void }) {
               </Pressable>
             ))}
           </View>
-        </Section>
+        </Section> : null}
         <T w={400} s={11.5} lh={1.4} color={INK_DIM}>{t("trace.note")}</T>
       </ScrollView>
     </View>

@@ -3,7 +3,7 @@ import type { Beneficiary, KycLinks, Movement } from "../types";
 
 // Datos fijos de la demo (D2: empleada en México). Ningún valor es real; las URLs son ilustrativas.
 export const DEMO_USER = { name: "Ana Torres", email: "ana.torres@acme.example", country: "MX", locale: "es-MX" } as const;
-export const EMPLOYER = { name: "Acme Beneficios", short: "Acme", legalName: "Acme Beneficios S.A. de C.V." } as const;
+export const EMPLOYER = { name: "Acme", short: "Acme", legalName: "Acme S.A. de C.V." } as const;
 export const DEMO_ADDRESS = "0x7A3f9C2e4B1d8E6f0A5c3D7b9E2f4A6c8B0d1E3f";
 /** Cuentas guardadas con las que arranca la demo (CLABEs con dígito de control válido, ninguna real). */
 export const DEMO_BENEFICIARIES: readonly Omit<Beneficiary, "createdAt">[] = [

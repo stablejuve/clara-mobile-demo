@@ -45,8 +45,8 @@ test("reasonCopy traduce las razones conocidas y devuelve el código si no la co
   expect(reasonCopy("something_else")).toBe("something_else");
 });
 
-test("el pie dice powered by Relayer y las pestañas son Inicio · Beneficios · Perfil", () => {
-  expect(t("common.poweredBy")).toBe("powered by Relayer");
+test("el pie dice powered by Clara y las pestañas son Inicio · Beneficios · Perfil", () => {
+  expect(t("common.poweredBy")).toBe("powered by Clara");
   expect([t("tab.home"), t("tab.benefits"), t("tab.profile")]).toEqual(["Inicio", "Beneficios", "Perfil"]);
   const k: Key = "balance.back";
   expect(t(k)).toBe("Volver al saldo");

@@ -7,7 +7,7 @@ const CARBON = "#1A1A19";  // --surface-page dark  (DARK.page)
 const faceIDPermission = "Acme Beneficios usa Face ID para crear y usar tu wallet de Recibo.";
 
 const config: ExpoConfig = {
-  name: "Acme Beneficios",
+  name: "Relayer HR",
   slug: "relayer-mobiledemo",
   version: "0.1.0",
   orientation: "portrait",
