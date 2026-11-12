@@ -16,6 +16,14 @@ export const DEMO_BENEFICIARIES: readonly Omit<Beneficiary, "createdAt">[] = [
   { id: "ben_gym", owner: "business", name: "Gimnasio Fortis S.A. de C.V.", alias: "Gimnasio", email: "pagos@fortis.example", rfc: "GFO180512AB1",
     address: { street: "Insurgentes Sur 1458", city: "Benito Juárez", state: "Ciudad de México", postalCode: "03230" }, clabe: "646180158300125536", bankName: "STP", status: "verified" },
 ];
+/** Compras con tarjeta de la demo (MXN; la tarjeta cobra en USD y descuenta USDC al tipo de la demo). */
+export const CARD_PURCHASES: readonly { merchant: string; category: string; amountMxnCents: number }[] = [
+  { merchant: "OXXO", category: "Tienda", amountMxnCents: 86_50 },
+  { merchant: "Uber", category: "Transporte", amountMxnCents: 189_00 },
+  { merchant: "Spotify", category: "Suscripción", amountMxnCents: 115_00 },
+  { merchant: "Walmart", category: "Súper", amountMxnCents: 642_30 },
+  { merchant: "Starbucks", category: "Café", amountMxnCents: 89_00 },
+];
 export const DEMO_CARD = { last4: "4821", expiry: "11/30", number: "4915 6637 0003 4821", cvv: "317" } as const;
 export const KYC_LINKS: KycLinks = {
   tosLink: "https://bridge.example/accept-terms-of-service?session_token=demo",

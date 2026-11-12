@@ -66,6 +66,15 @@ export function deposit(s: ModuleState, m: Movement): Result {
   return ok({ ...s, balanceUsdcCents: s.balanceUsdcCents + m.amountUsdcCents });
 }
 
+/** Compra con tarjeta: descuenta el saldo si la tarjeta está activa, autorizada y alcanza; si no, se registra rechazada. */
+export function cardPurchase(s: ModuleState, amountUsdcCents: number): { state: ModuleState; declineReason: Movement["declineReason"] | null } | { code: RelayerErrorCode } {
+  if (s.module !== "active" || s.card.last4 === null) return { code: "card_not_active" };
+  if (s.card.status === "frozen") return { state: s, declineReason: "card_frozen" };
+  if (s.card.status !== "active" || s.card.authorizedAt === null) return { state: s, declineReason: "card_not_authorized" };
+  if (amountUsdcCents > s.balanceUsdcCents) return { state: s, declineReason: "insufficient_balance" };
+  return { state: { ...s, balanceUsdcCents: s.balanceUsdcCents - amountUsdcCents }, declineReason: null };
+}
+
 // ── Tarjeta ─────────────────────────────────────────────────────────────────
 export function endorsementExpired(s: ModuleState, now: number): boolean {
   return s.kyc.approvedAt !== null && now - s.kyc.approvedAt > ENDORSEMENT_WINDOW_MS;

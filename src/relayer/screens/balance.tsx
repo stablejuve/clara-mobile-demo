@@ -9,7 +9,7 @@ import { LargeTitleScreen } from "../../ui/LargeTitle";
 import { T } from "../../ui/primitives";
 import { RADIUS } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
-import { movementSub, movementTitle } from "../display";
+import { movementMxnCents, movementSub, movementTitle } from "../display";
 import { formatCents, usdcToMxnCents } from "../money";
 import type { Movement } from "../types";
 
@@ -27,10 +27,10 @@ export function BalanceScreen({ nav, module }: AppCtx) {
     <LargeTitleScreen title={t("rc.name")} back={t("tab.benefits")} titleGap={0}>
       <View style={{ paddingTop: 34, paddingHorizontal: 20, paddingBottom: 30, alignItems: "center", gap: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-          <T w={600} s={56} lh={1} ls={-0.035} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }} accessibilityLabel="balance-usdc">{formatCents(shown)}</T>
-          <T w={500} s={15} color={c.ink40}>USDC</T>
+          <T w={600} s={formatCents(usdcToMxnCents(shown)).length > 9 ? 48 : 56} lh={1} ls={-0.035} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }} accessibilityLabel="balance-mxn">${formatCents(usdcToMxnCents(shown))}</T>
+          <T w={500} s={15} color={c.ink40}>MXN</T>
         </View>
-        <T w={400} s={14} mono color={c.ink55}>≈ ${formatCents(usdcToMxnCents(shown))} MXN</T>
+        <T w={400} s={14} mono color={c.ink55} accessibilityLabel="balance-usdc">≈ {formatCents(shown)} USDC</T>
       </View>
       <View style={{ flexDirection: "row", justifyContent: "center", gap: 40, paddingBottom: 32 }}>
         <Action icon="card" label={t("rc.card")} onPress={() => nav("card")} />
@@ -92,13 +92,17 @@ export function MovementRow({ m, title, sub, onPress }: { m: Movement; title: st
     <Pressable onPress={onPress} accessibilityLabel={`movement-${m.id}`}
       style={({ pressed }) => ({ height: ROW_H, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: c.ink08, backgroundColor: pressed ? c.ink04 : "transparent" })}>
       <View style={{ width: 38, height: 38, borderRadius: RADIUS.pill, backgroundColor: c.ink08, alignItems: "center", justifyContent: "center" }}>
-        <Ico name="arrowDownLeft" size={18} color={isIn ? c.settled : c.ink72} sw={2} style={isIn ? undefined : { transform: [{ rotate: "180deg" }] }} />
+        {m.kind === "card" ? <Ico name="card" size={18} color={c.ink72} sw={1.9} />
+          : <Ico name="arrowDownLeft" size={18} color={isIn ? c.settled : c.ink72} sw={2} style={isIn ? undefined : { transform: [{ rotate: "180deg" }] }} />}
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <T w={500} s={16} color={c.inkStrong} numberOfLines={1}>{title}</T>
         <T w={400} s={13} color={c.ink55}>{sub}</T>
       </View>
-      <T w={500} s={15} mono color={isIn ? c.settled : c.inkStrong}>{isIn ? "+" : "−"}{formatCents(m.amountUsdcCents)}</T>
+      <View style={{ alignItems: "flex-end", gap: 2 }}>
+        <T w={500} s={15} mono color={isIn ? c.settled : m.status === "failed" ? c.ink40 : c.inkStrong} style={m.status === "failed" && m.kind === "card" ? { textDecorationLine: "line-through" } : undefined}>{isIn ? "+" : "−"}${formatCents(movementMxnCents(m))}</T>
+        <T w={400} s={11.5} mono color={c.ink40}>{formatCents(m.amountUsdcCents)} USDC</T>
+      </View>
     </Pressable>
   );
 }

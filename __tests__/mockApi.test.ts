@@ -55,6 +55,8 @@ test("happy: alta, nómina, tarjeta, teléfono, CLABE y envío completo; eventos
   const { address } = await api.createPasskey();
   expect(address).toMatch(/^0x[0-9a-fA-F]{40}$/);
   expect((await api.getModule()).module).toBe("active");
+  // La tarjeta se emite sola al activarse (Bridge: endorsement `cards` aprobado → 24 h para emitir).
+  expect((await api.getModule()).card.status).toBe("requested");
   flush();
   const bal = await api.getBalance();
   expect(bal).toEqual({ usdcCents: 492_75, mxnCents: 8_499_94, rate: 17.25 });
@@ -62,9 +64,7 @@ test("happy: alta, nómina, tarjeta, teléfono, CLABE y envío completo; eventos
   expect(movs).toHaveLength(1);
   expect(movs[0]).toMatchObject({ kind: "deposit", fromLabel: "Acme Beneficios", reference: DEFAULT_DEPOSIT.reference, amountUsdcCents: 492_75 });
 
-  await api.requestCard();
-  expect((await api.getModule()).card.status).toBe("requested");
-  flush();
+  expect(await codeOf(api.requestCard())).toBe("invalid_transition");
   expect((await api.getModule()).card).toMatchObject({ status: "active", last4: "4821", authorizedAt: null });
   expect(await codeOf(api.addToWallet("apple"))).toBe("card_not_active");
   await api.authorizeCard();
@@ -93,12 +93,13 @@ test("happy: alta, nómina, tarjeta, teléfono, CLABE y envío completo; eventos
   expect(quote).toMatchObject({ amountUsdcCents: 100_00, feeUsdcCents: 50, netUsdcCents: 99_50, amountMxnCents: 1716_38, expiresAt: NOW + 60_000 });
   const receipt = await api.confirmSend(quote.id);
   expect(receipt).toMatchObject({ status: "submitted", amountMxnCents: 1716_38, beneficiaryName: "María Elena Medina Ruiz", bankName: "Banorte", clabeLast4: "2470", completedAt: null });
-  expect((await api.getBalance()).usdcCents).toBe(392_75);
+  // 492.75 − OXXO (86.50 MXN = 5.01 USDC, la primera compra tras autorizar) − 100.00 enviados.
+  expect((await api.getBalance()).usdcCents).toBe(387_74);
   expect(await codeOf(api.confirmSend(quote.id))).toBe("invalid_transition");
   flush();
   expect(await api.getReceipt(receipt.id)).toMatchObject({ status: "completed", completedAt: NOW });
-  expect((await api.listMovements()).map((m) => [m.kind, m.status, m.toLabel])).toEqual([["withdrawal", "completed", "Mamá"], ["deposit", "completed", undefined]]);
-  expect((await api.getEvents()).map((e) => e.type)).toEqual(["kyc.approved", "module.activated", "wallet.ready", "deposit.received", "card.issued", "withdrawal.completed"]);
+  expect((await api.listMovements()).map((m) => [m.kind, m.status, m.toLabel])).toEqual([["withdrawal", "completed", "Mamá"], ["card", "completed", undefined], ["deposit", "completed", undefined]]);
+  expect((await api.getEvents()).map((e) => e.type)).toEqual(["kyc.approved", "module.activated", "wallet.ready", "card.issued", "deposit.received", "card.transaction", "withdrawal.completed"]);
 
   await api.deactivate();
   expect((await api.getModule()).module).toBe("off");
@@ -124,19 +125,18 @@ test("cards_unavailable_region: requestCard falla tipado y la tarjeta sigue en n
   expect((await api.getModule()).card.status).toBe("none");
 });
 
-test("endorsement_expired: requestCard falla, el estado marca la caducidad, reconfirmKyc lo arregla", async () => {
+test("endorsement_expired: la emisión automática marca la caducidad y reconfirmKyc la vuelve a emitir", async () => {
   const { api, flush } = harness("endorsement_expired");
   await activate(api, flush);
   expect((await api.getModule()).kyc.approvedAt).toBe(NOW - 25 * 60 * 60 * 1000);
-  expect(await codeOf(api.requestCard())).toBe("endorsement_expired");
+  // La emisión automática choca con la ventana de 24 h y deja la tarjeta para «confirma tus datos».
   expect((await api.getModule()).card.status).toBe("endorsement_expired");
   await api.reconfirmKyc();
   expect((await api.getModule()).kyc.status).toBe("under_review");
   flush();
   expect((await api.getModule()).kyc).toMatchObject({ status: "approved", approvedAt: NOW });
-  expect((await api.getModule()).card.status).toBe("none");
-  await api.requestCard();
-  expect((await api.getModule()).card.status).toBe("requested");
+  // Reaprobado: se vuelve a emitir sola.
+  expect((await api.getModule()).card).toMatchObject({ status: "active", last4: "4821" });
 });
 
 test("bank_verification_failed: la cuenta nueva queda en failed y se puede volver a capturar", async () => {

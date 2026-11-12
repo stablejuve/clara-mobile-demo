@@ -14,7 +14,7 @@ import { useTheme } from "../../ui/ThemeProvider";
 import { beneBank, beneTitle } from "../beneficiaries";
 import type { SheetParams } from "../../navigation/routes";
 import { BeneRow, NewBeneRow, sortBenes } from "./beneRow";
-import { formatCents, mxnToUsdcCents, quoteFor } from "../money";
+import { formatCents, mxnToUsdcCents, quoteFor, usdcToMxnCents } from "../money";
 import type { Quote, Receipt } from "../types";
 
 /** «012 180 00123456789 9»: banco, plaza, cuenta, control. */
@@ -60,7 +60,7 @@ export function SendSheet(ctx: AppCtx & { params?: SheetParams["send"] }) {
   const amtErr = check && !check.ok ? (check.code === "insufficient_balance" ? t("rc.send.insufficient") : t("rc.send.minimum")) : null;
   const recv = check?.ok ? check.quote.amountMxnCents : 0;
   const amtText = (unit === "mxn" ? "$" : "") + (input || "0");
-  const convLine = !check ? t("rc.send.available", { amount: formatCents(state.balanceUsdcCents) })
+  const convLine = !check ? t("rc.send.available", { amount: formatCents(usdcToMxnCents(state.balanceUsdcCents)) })
     : amtErr ?? (unit === "mxn" ? t("rc.send.convMxn", { usdc: formatCents(usdc), mxn: formatCents(recv) }) : t("rc.send.convUsdc", { mxn: formatCents(recv) }));
   const [quote, setQuote] = useState<Quote | null>(null);
   const review = async () => {

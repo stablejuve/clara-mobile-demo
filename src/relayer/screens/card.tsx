@@ -12,6 +12,10 @@ import { T } from "../../ui/primitives";
 import { RADIUS, RL } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
 import { BeneRow, NewBeneRow, sortBenes } from "./beneRow";
+import { MovementRow } from "./balance";
+import { movementSub, movementTitle } from "../display";
+import { useNow } from "../../hooks/useNow";
+import { tracer } from "../trace";
 import { formatCents, usdcToMxnCents } from "../money";
 import type { CardDetails } from "../types";
 
@@ -20,7 +24,7 @@ type Phase = "none" | "issuing" | "authorize" | "expired" | "reconfirming" | "ac
 /** Tarjeta Visa virtual: pedir → emitiendo → autorizar con Face ID → tarjeta que se voltea, se congela y va a la Wallet. */
 export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
   const { c } = useTheme();
-  const { state, api } = module;
+  const { state, api, movements } = module;
   const { error, run } = useAction();
   const hud = useFaceIdHud(faceId);
   const card = state.card;
@@ -53,12 +57,13 @@ export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
       Animated.spring(enter, { toValue: 1, useNativeDriver: true, damping: 13, stiffness: 120 }),
     ]).start();
   }, [phase, api, enter]);
+  // Modo explicativo: revelar datos es una llamada propia del backend real (Stripe Issuing Elements).
+  useEffect(() => { if (flipped) tracer.hit("revealCard"); }, [flipped]);
   useEffect(() => { Animated.timing(flip, { toValue: flipped ? 1 : 0, duration: 650, easing: EASE_IOS, useNativeDriver: true }).start(); }, [flipped, flip]);
   useEffect(() => { Animated.timing(frost, { toValue: frozenUi ? 1 : 0, duration: 450, useNativeDriver: true }).start(); }, [frozenUi, frost]);
 
   const action = async () => {
-    if (phase === "none") await run(() => api.requestCard());
-    else if (phase === "authorize") { if (await hud.auth(t("rc.authorized"), t("rc.card.authReason"))) await run(() => api.authorizeCard()); }
+    if (phase === "authorize") { if (await hud.auth(t("rc.authorized"), t("rc.card.authReason"))) await run(() => api.authorizeCard()); }
     else if (phase === "expired") await run(() => api.reconfirmKyc());
   };
   const toggleFreeze = (v: boolean) => {
@@ -70,9 +75,13 @@ export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
   };
 
   const busy = phase === "issuing" || phase === "reconfirming";
-  const title = phase === "authorize" ? t("rc.card.authTitle") : phase === "expired" || phase === "reconfirming" ? t("rc.card.expiredTitle") : t("rc.card.title");
-  const sub = phase === "authorize" ? t("rc.card.authSub") : phase === "expired" || phase === "reconfirming" ? t("rc.card.expiredSub") : t("rc.card.sub");
-  const btn = phase === "authorize" ? t("rc.card.authBtn") : busy ? (phase === "issuing" ? t("rc.card.issuing") : t("rc.verifying")) : phase === "expired" ? t("rc.card.expiredBtn") : t("rc.card.request");
+  // La tarjeta se emite sola al activar Recibo (Bridge: endorsement `cards`); aquí sólo se autoriza o se reconfirman datos.
+  const title = phase === "authorize" ? t("rc.card.authTitle") : phase === "expired" || phase === "reconfirming" ? t("rc.card.expiredTitle") : phase === "none" ? t("rc.card.unavailableTitle") : t("rc.card.title");
+  const sub = phase === "authorize" ? t("rc.card.authSub") : phase === "expired" || phase === "reconfirming" ? t("rc.card.expiredSub") : phase === "none" ? t("rc.card.unavailableSub") : t("rc.card.issuingSub");
+  const btn = phase === "authorize" ? t("rc.card.authBtn") : phase === "reconfirming" ? t("rc.verifying") : t("rc.card.expiredBtn");
+  const showBtn = phase === "authorize" || phase === "expired" || phase === "reconfirming";
+  const cardMoves = movements.filter((m) => m.kind === "card");
+  const now = useNow(60_000);
   const walletName = Platform.OS === "android" ? "Google Wallet" : "Apple Wallet";
   const frontRot = flip.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] });
   const backRot = flip.interpolate({ inputRange: [0, 1], outputRange: ["180deg", "360deg"] });
@@ -91,7 +100,7 @@ export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
                 <T w={400} s={15} lh={1.4} color={c.ink55} style={{ textAlign: "center" }}>{sub}</T>
                 {error ? <T w={400} s={14} lh={1.4} color={c.error} style={{ textAlign: "center", paddingTop: 6 }}>{error}</T> : null}
               </View>
-              <PrimaryButton label={btn} size={16} dim={busy} icon={phase === "authorize" ? "faceId" : undefined} onPress={() => { void action(); }} style={{ marginTop: 28 }} accessibilityLabel="card-action" />
+              {showBtn ? <PrimaryButton label={btn} size={16} dim={busy} icon={phase === "authorize" ? "faceId" : undefined} onPress={() => { void action(); }} style={{ marginTop: 28 }} accessibilityLabel="card-action" /> : null}
             </>
           ) : (
             <>
@@ -138,6 +147,15 @@ export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
                   <CardAction icon="eye" label={flipped ? t("rc.card.hideShort") : t("rc.card.details")} on={flipped} disabled={frozenUi} onPress={() => setFlipped((f) => !f)} a11y="card-details" />
                   <CardAction icon="freeze" label={frozenUi ? t("rc.card.unfreeze") : t("rc.card.freezeShort")} on={frozenUi} onPress={() => toggleFreeze(!frozenUi)} a11y="card-freeze" />
                 </View>
+                <Section title={t("rc.card.transactions")}>
+                  {cardMoves.length === 0 ? (
+                    <View style={{ paddingVertical: 22, paddingHorizontal: 16, alignItems: "center" }}>
+                      <T w={400} s={14} color={c.ink40}>{t("rc.card.noTransactions")}</T>
+                    </View>
+                  ) : cardMoves.slice(0, 5).map((m) => (
+                    <MovementRow key={m.id} m={m} title={movementTitle(m)} sub={movementSub(m, now)} onPress={() => nav("movement", { id: m.id })} />
+                  ))}
+                </Section>
                 <Section title={t("rc.card.speiTitle")}>
                   {benes.slice(0, 3).map((b) => (
                     <View key={b.id}>

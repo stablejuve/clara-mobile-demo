@@ -7,6 +7,9 @@ Expo app (fork del cascarón `pickler-expo/apps/mobile`) que demuestra el módul
 - UI: diseño «Recibo Minimal». Pestañas con título grande (`src/ui/LargeTitle.tsx`), hojas nativas (`onboarding`, `kycForm`, `send`, `movement`), kit en `src/ui/kit.tsx` (SVG exactos del diseño).
 - KYC nativo: 5 secciones con «Llenar con ejemplo»; modelo y validación en `src/relayer/kyc.ts`, contraste con relayer-core en `docs/kyc-native.md`.
 - Beneficiarios (como `beneficiaries-v2` de relayer-core): `ModuleState.beneficiaries` reemplaza la cuenta única; Transferir abre en «Enviar a» (cuentas guardadas) y «Nueva cuenta» es la hoja `beneficiary` (titular → datos → domicilio → CLABE → revisar). Modelo en `src/relayer/beneficiaries.ts`; la demo arranca con 4 cuentas (`DEMO_BENEFICIARIES`).
+- Tarjeta: se emite sola al activar Recibo (Bridge: endorsement `cards` + 24 h); la pantalla sólo autoriza el gasto (approve no custodial) o reconfirma datos. Compras con tarjeta = movimientos `card` (`simulateCardPurchase`, primera compra automática tras autorizar).
+- Montos: MXN primero, USDC debajo como referencia (`movementMxnCents` en `src/relayer/display.ts`).
+- Modo explicativo: cada acción saca un chip con el endpoint de relayer-core que llamaría (catálogo en `src/relayer/endpoints.ts`, `withTrace` en `src/relayer/trace.ts`, UI `src/ui/TraceOverlay.tsx`); se apaga en Perfil. Plan: `docs/plans/2026-11-12-flujos-y-modo-explicativo.md`.
 - Dev: `xcrun simctl openurl booted relayermobiledemo://demo/seed/active` deja el módulo activo; `…/demo/open/<pantalla>` abre una pantalla.
 - Contrato: `src/relayer/api.ts` (`RelayerModuleApi`) es la frontera; `src/relayer/mock/` la implementa. La fase de backend reemplaza solo el mock.
 - Copy en `src/i18n/es.ts`; nunca texto hardcodeado en pantallas.

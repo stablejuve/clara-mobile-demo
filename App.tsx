@@ -19,6 +19,9 @@ import { Navigator } from "./src/navigation/Navigator";
 import { EMPTY_DRAFT, fillSample, KYC_SECTIONS, type KycDraft, toSubmission } from "./src/relayer/kyc";
 import { EMPLOYER } from "./src/relayer/mock/fixtures";
 import { createMockApi } from "./src/relayer/mock/mockApi";
+import { tracer, withTrace } from "./src/relayer/trace";
+import { useTraceBoot } from "./src/hooks/useTraceEnabled";
+import { TraceOverlay } from "./src/ui/TraceOverlay";
 import { formatMxn } from "./src/relayer/money";
 import type { Movement } from "./src/relayer/types";
 import { useAppStore } from "./src/store";
@@ -30,7 +33,7 @@ void SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ fade: true, duration: 200 });
 
 // Único punto que crea la implementación del API (D6): cambiar esta línea es cambiar el mock por el backend real.
-const api = createMockApi({ storage: asyncStorageKv });
+const api = withTrace(createMockApi({ storage: asyncStorageKv, trace: (k) => { tracer.hit(k); } }), tracer);
 const BANNER_MS = 4800;
 
 const bannerFor = (m: Movement): BannerContent => ({
@@ -58,6 +61,7 @@ function Shell() {
   const scr = useCurrentScreen();
   const [draft, setDraft] = useState<KycDraft>(EMPTY_DRAFT);
   const [banner, setBanner] = useState<BannerContent | null>(null);
+  useTraceBoot();
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notifications = useNotifications((target) => { navigateTo("movement", { id: target.movementId }); });
   // Con la app al frente, el banner del diseño; en segundo plano, la notificación local del sistema.
@@ -88,6 +92,7 @@ function Shell() {
       <StatusBar barStyle={scheme === "dark" ? "light-content" : "dark-content"} />
       <AppCtxProvider value={ctx}><Navigator /></AppCtxProvider>
       <Banner content={banner} onPress={(b) => { setBanner(null); navigateTo("movement", { id: b.movementId }); }} />
+      <TraceOverlay tracer={tracer} />
     </View>
   );
 }

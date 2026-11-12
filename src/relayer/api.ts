@@ -41,5 +41,7 @@ export type RelayerDemoApi = {
   setScenario(s: Scenario): Promise<void>;
   /** «Simular pago de Acme»: crea el movimiento (MXN → USDC al tipo de la demo) y lo emite; la app dispara la notificación. */
   simulateEmployerDeposit(input: { amountMxnCents: number; concept: string; reference: string }): Promise<Movement>;
+  /** «Simular compra con tarjeta»: cobra (o rechaza) una compra de `CARD_PURCHASES` y la deja en movimientos. */
+  simulateCardPurchase(input?: { merchant: string; category: string; amountMxnCents: number }): Promise<Movement>;
   reset(): Promise<void>;
 };

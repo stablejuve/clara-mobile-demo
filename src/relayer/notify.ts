@@ -6,10 +6,10 @@ import type { Movement } from "./types";
 export type PushTarget = { kind: "deposit"; movementId: string };
 
 export function depositNotificationContent(m: Movement): { title: string; body: string; data: Record<string, unknown> } {
-  const mxn = m.amountMxnCents !== undefined ? ` (≈ ${formatMxn(m.amountMxnCents)})` : "";
+  const main = m.amountMxnCents !== undefined ? `+${formatMxn(m.amountMxnCents)} (≈ ${formatCents(m.amountUsdcCents)} USDC)` : `+${formatCents(m.amountUsdcCents)} USDC`;
   return {
     title: t("notify.depositTitle", { from: m.fromLabel ?? t("common.employer") }),
-    body: `+${formatCents(m.amountUsdcCents)} USDC${mxn}${m.concept ? ` · ${m.concept}` : ""}`,
+    body: `${main}${m.concept ? ` · ${m.concept}` : ""}`,
     data: { recibo: { kind: "deposit", movementId: m.id } },
   };
 }

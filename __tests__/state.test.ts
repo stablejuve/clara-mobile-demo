@@ -153,3 +153,15 @@ test("onboardingPage: dónde se retoma la hoja de alta según el estado", () => 
   expect(M.onboardingPage(passkey)).toBe(3);
   expect(M.onboardingPage(active)).toBe(3);
 });
+
+test("compra con tarjeta: descuenta si está activa y autorizada; si no, se rechaza con razón", () => {
+  const r = M.cardPurchase(cardAuthorized, 10_00);
+  expect("state" in r && [r.state.balanceUsdcCents, r.declineReason]).toEqual([490_00, null]);
+  const notAuth = M.cardPurchase(cardIssued, 10_00);
+  expect("state" in notAuth && notAuth.declineReason).toBe("card_not_authorized");
+  const frozenR = M.cardPurchase(unwrap(M.freezeCard(cardAuthorized, true)), 10_00);
+  expect("state" in frozenR && frozenR.declineReason).toBe("card_frozen");
+  const broke = M.cardPurchase(cardAuthorized, 600_00);
+  expect("state" in broke && [broke.state.balanceUsdcCents, broke.declineReason]).toEqual([500_00, "insufficient_balance"]);
+  expect(M.cardPurchase(funded, 1)).toEqual({ code: "card_not_active" });
+});

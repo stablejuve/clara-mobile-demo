@@ -1,12 +1,13 @@
 import type { KeyValueStorage } from "../../storage/kv";
 import type { RelayerDemoApi, RelayerModuleApi } from "../api";
-import { DEMO_RATE, QUOTE_TTL_MS, quoteFor, usdcToMxnCents } from "../money";
+import { DEMO_RATE, mxnToUsdcCents, QUOTE_TTL_MS, quoteFor, usdcToMxnCents } from "../money";
 import * as M from "../state";
 import { type Balance, type EventType, type ModuleEvent, type ModuleSnapshot, type ModuleState, type Movement, type Quote, type Receipt, RelayerError } from "../types";
 import { bankFor, clabeValid } from "../clabe";
 import type { KycSubmission } from "../kyc";
+import type { BackgroundKey } from "../endpoints";
 import { beneBank, beneTitle } from "../beneficiaries";
-import { DEFAULT_DEPOSIT, DEMO_ADDRESS, DEMO_BENEFICIARIES, DEMO_CARD, DEMO_USER, employerDeposit, KYC_LINKS } from "./fixtures";
+import { CARD_PURCHASES, DEFAULT_DEPOSIT, DEMO_ADDRESS, DEMO_BENEFICIARIES, DEMO_CARD, DEMO_USER, employerDeposit, KYC_LINKS } from "./fixtures";
 import { DEFAULT_SCENARIO, loadScenario, rulesFor, saveScenario, type Scenario } from "./scenarios";
 
 // Implementación en memoria de RelayerModuleApi (spec «Capa mock»): latencias 300–1200 ms por llamada, procesos de fondo
@@ -21,17 +22,20 @@ export type MockOptions = {
   delay?: () => Promise<void>;
   /** Procesos de fondo. */
   later?: (fn: () => void, ms: number) => void;
+  /** Modo explicativo: avisa lo que en el backend real llegaría por webhook. */
+  trace?: (key: BackgroundKey) => void;
 };
 
 export const randomLatency = (): Promise<void> => new Promise((r) => setTimeout(r, 300 + Math.floor(Math.random() * 900)));
 
 /** Tiempos de los procesos de fondo (ms). */
-export const BACKGROUND_MS = { kycVerdict: 2500, reconfirmVerdict: 1500, cardEndorsement: 1500, cardIssued: 4000, firstPayroll: 4000, bankVerification: 3000, speiSettlement: 3500 } as const;
+export const BACKGROUND_MS = { firstCardPurchase: 6000, kycVerdict: 2500, reconfirmVerdict: 1500, cardEndorsement: 1500, cardIssued: 4000, firstPayroll: 4000, bankVerification: 3000, speiSettlement: 3500 } as const;
 
 export function createMockApi(opts: MockOptions): MockApi {
   const now = opts.now ?? Date.now;
   const delay = opts.delay ?? randomLatency;
   const later = opts.later ?? ((fn, ms) => { setTimeout(fn, ms); });
+  const trace = opts.trace ?? (() => {});
 
   let state: ModuleState = M.INITIAL_STATE;
   let movements: Movement[] = [];
@@ -62,6 +66,7 @@ export function createMockApi(opts: MockOptions): MockApi {
       const r = rules();
       if (applySafe(M.resolveKyc(state, r.kycOutcome, now() - r.kycApprovedAgoMs, r.kycRejectionReasons))) {
         event(r.kycOutcome === "approved" ? "kyc.approved" : "kyc.rejected", { status: r.kycOutcome, end_user: kycSubmission?.email ?? DEMO_USER.email });
+        trace("kycVerdict");
         emit();
       }
     }, BACKGROUND_MS.kycVerdict);
@@ -77,6 +82,37 @@ export function createMockApi(opts: MockOptions): MockApi {
     apply(M.deposit(state, m));
     movements = [...movements, m];
     event("deposit.received", { movement_id: m.id, amount_usdc_cents: m.amountUsdcCents, reference: m.reference ?? null, tx_hash: m.txHash ?? null });
+    trace("payrollDeposit");
+    emit();
+    return m;
+  };
+
+  /** Emisión (Bridge endorsement `cards` → Stripe Issuing): requested → endorsement_pending → active. La tarjeta se emite sola
+   *  en cuanto el KYC queda aprobado con la wallet lista (Bridge da 24 h); `requestCard` queda para reintentar. */
+  const issueCard = (): ModuleState => {
+    const r = M.requestCard(state, now(), rules().cardsAvailable);
+    if (!r.ok && r.code === "endorsement_expired") { applySafe(M.markEndorsementExpired(state)); throw new RelayerError(r.code); }
+    const s = apply(r);
+    later(() => { applySafe(M.cardEndorsementPending(state)); }, BACKGROUND_MS.cardEndorsement);
+    later(() => {
+      if (applySafe(M.cardIssued(state, DEMO_CARD.last4, DEMO_CARD.expiry))) { event("card.issued", { last4: DEMO_CARD.last4, expiry: DEMO_CARD.expiry }); trace("cardIssued"); emit(); }
+    }, BACKGROUND_MS.cardIssued);
+    return s;
+  };
+  const autoIssue = () => { try { if (state.card.status === "none") issueCard(); } catch { /* región sin tarjetas o endorsement vencido: la UI lo muestra */ } };
+
+  let purchaseSeq = 0;
+  const simulateCardPurchase: MockApi["simulateCardPurchase"] = async (input) => {
+    const p = input ?? CARD_PURCHASES[purchaseSeq++ % CARD_PURCHASES.length];
+    const usdc = mxnToUsdcCents(p.amountMxnCents);
+    const r = M.cardPurchase(state, usdc);
+    if ("code" in r) throw new RelayerError(r.code);
+    state = r.state;
+    const m: Movement = { id: id("mv"), kind: "card", status: r.declineReason ? "failed" : "completed", amountUsdcCents: usdc, amountMxnCents: p.amountMxnCents,
+      at: now(), merchant: p.merchant, category: p.category, ...(r.declineReason ? { declineReason: r.declineReason } : {}) };
+    movements = [...movements, m];
+    event("card.transaction", { movement_id: m.id, merchant: p.merchant, amount_usdc_cents: usdc, status: m.status });
+    trace("cardTransaction");
     emit();
     return m;
   };
@@ -108,7 +144,7 @@ export function createMockApi(opts: MockOptions): MockApi {
     async reconfirmKyc() {
       await tick();
       const s = apply(M.reconfirmKyc(state));
-      later(() => { if (applySafe(M.resolveKyc(state, "approved", now()))) { event("kyc.approved", { status: "approved", reconfirm: 1 }); emit(); } }, BACKGROUND_MS.reconfirmVerdict);
+      later(() => { if (applySafe(M.resolveKyc(state, "approved", now()))) { event("kyc.approved", { status: "approved", reconfirm: 1 }); trace("kycVerdict"); emit(); autoIssue(); } }, BACKGROUND_MS.reconfirmVerdict);
       return s;
     },
 
@@ -119,6 +155,7 @@ export function createMockApi(opts: MockOptions): MockApi {
       apply(M.walletReady(state, DEMO_ADDRESS));
       // La demo arranca con cuentas ya guardadas: el default de «Transferir» es elegir a quién, no capturar una CLABE.
       for (const b of DEMO_BENEFICIARIES) applySafe(M.addBeneficiary(state, { ...b, createdAt: now() }));
+      autoIssue();
       event("module.activated", { end_user: DEMO_USER.email });
       event("wallet.ready", { address: DEMO_ADDRESS, chain: "base" });
       emit();
@@ -133,19 +170,15 @@ export function createMockApi(opts: MockOptions): MockApi {
 
     async listMovements() { await tick(); return snapshot().movements as Movement[]; },
 
-    async requestCard() {
+    async requestCard() { await tick(); return issueCard(); },
+
+    async authorizeCard() {
       await tick();
-      const r = M.requestCard(state, now(), rules().cardsAvailable);
-      if (!r.ok && r.code === "endorsement_expired") { applySafe(M.markEndorsementExpired(state)); throw new RelayerError(r.code); }
-      const s = apply(r);
-      later(() => { applySafe(M.cardEndorsementPending(state)); }, BACKGROUND_MS.cardEndorsement);
-      later(() => {
-        if (applySafe(M.cardIssued(state, DEMO_CARD.last4, DEMO_CARD.expiry))) { event("card.issued", { last4: DEMO_CARD.last4, expiry: DEMO_CARD.expiry }); emit(); }
-      }, BACKGROUND_MS.cardIssued);
+      const s = apply(M.authorizeCard(state, now()));
+      // Primera compra de la demo poco después de autorizar, para que la tarjeta tenga transacciones.
+      later(() => { if (state.card.authorizedAt !== null && !movements.some((m) => m.kind === "card")) void simulateCardPurchase().catch(() => {}); }, BACKGROUND_MS.firstCardPurchase);
       return s;
     },
-
-    async authorizeCard() { await tick(); return apply(M.authorizeCard(state, now())); },
 
     async getCard() {
       await tick();
@@ -165,7 +198,7 @@ export function createMockApi(opts: MockOptions): MockApi {
       if (!clabeValid(clabe)) throw new RelayerError("clabe_invalid");
       const b = { ...input, clabe, id: id("ben"), bankName: bankFor(clabe) ?? "Banco", status: "pending_verification" as const, createdAt: now() };
       apply(M.addBeneficiary(state, b));
-      later(() => { applySafe(M.resolveBeneficiary(state, b.id, rules().bankOutcome)); }, BACKGROUND_MS.bankVerification);
+      later(() => { if (applySafe(M.resolveBeneficiary(state, b.id, rules().bankOutcome))) trace("beneficiaryVerified"); }, BACKGROUND_MS.bankVerification);
       return b;
     },
 
@@ -195,7 +228,7 @@ export function createMockApi(opts: MockOptions): MockApi {
       };
       receipts.set(receiptId, receipt);
       const mid = id("mv");
-      movements = [...movements, { id: mid, kind: "withdrawal", status: "pending", amountUsdcCents: quote.amountUsdcCents, at: now(), receiptId,
+      movements = [...movements, { id: mid, kind: "withdrawal", status: "pending", amountUsdcCents: quote.amountUsdcCents, amountMxnCents: quote.amountMxnCents, at: now(), receiptId,
         toLabel: bene ? beneTitle(bene) : undefined, toBank: bene ? beneBank(bene) : undefined }];
       apply(M.submitSend(state, quoteId, quote.amountUsdcCents, receiptId));
       later(() => {
@@ -203,6 +236,7 @@ export function createMockApi(opts: MockOptions): MockApi {
         if (!applySafe(M.resolveSend(state, outcome, quote.amountUsdcCents))) return;
         receipts.set(receiptId, { ...receipt, status: outcome, completedAt: now(), failureCode: outcome === "failed" ? "send_failed" : null });
         setMovement(mid, { status: outcome });
+        trace("speiSettled");
         if (outcome === "completed") event("withdrawal.completed", { receipt_id: receiptId, amount_usdc_cents: quote.amountUsdcCents, amount_mxn_cents: quote.amountMxnCents });
         emit();
       }, BACKGROUND_MS.speiSettlement);
@@ -234,6 +268,7 @@ export function createMockApi(opts: MockOptions): MockApi {
     // Espera la carga persistida: si no, el `then` de `ready` pisaría el escenario recién elegido.
     async setScenario(s) { await ready; scenario = s; await saveScenario(opts.storage, s); emit(); },
     simulateEmployerDeposit,
-    async reset() { kycSubmission = null; state = M.INITIAL_STATE; movements = []; events = []; receipts.clear(); quotes.clear(); seq = 0; emit(); },
+    simulateCardPurchase,
+    async reset() { kycSubmission = null; state = M.INITIAL_STATE; movements = []; events = []; receipts.clear(); quotes.clear(); seq = 0; purchaseSeq = 0; emit(); },
   };
 }

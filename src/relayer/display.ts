@@ -1,4 +1,5 @@
 import { t } from "../i18n/es";
+import { usdcToMxnCents } from "./money";
 import type { Movement } from "./types";
 
 // Cómo se lee un movimiento en la lista y en su detalle (diseño «Recibo Minimal»). Puro.
@@ -15,12 +16,17 @@ export function dayLabel(at: number, now: number): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
+/** Monto en pesos del movimiento (lo que se ve primero; el USDC va de referencia). */
+export const movementMxnCents = (m: Movement): number => m.amountMxnCents ?? usdcToMxnCents(m.amountUsdcCents);
+
 export function movementTitle(m: Movement): string {
+  if (m.kind === "card") return m.merchant ?? t("rc.card");
   return m.kind === "deposit" ? (m.fromLabel ?? t("common.employer")) : (m.toLabel ?? t("rc.bank"));
 }
 
 export function movementSub(m: Movement, now: number): string {
   if (m.kind === "deposit") return `${(m.concept ?? t("rc.deposit")).split(" · ")[0]} · ${dayLabel(m.at, now)}`;
+  if (m.kind === "card") return m.status === "failed" ? `${t("rc.mv.declined")} · ${t(`rc.mv.decline.${m.declineReason ?? "card_frozen"}`)}` : `${m.category ?? t("rc.card")} · ${dayLabel(m.at, now)}`;
   const st = m.status === "completed" ? t("rc.mv.completed") : m.status === "failed" ? t("rc.mv.failed") : t("rc.mv.pending");
   return `${t("rc.mv.transfer")} · ${st}`;
 }

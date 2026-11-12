@@ -53,6 +53,7 @@ export function DemoPanelScreen({ nav, module, faceId, notifications, kyc }: App
       {error ? <T w={400} s={12.5} lh={1.4} color={c.error}>{error}</T> : null}
       <Btn label={t("demo.payCta")} icon="banknote" variant="brand" busy={busy} disabled={!module.active || amountCents === null} onPress={() => { void pay(); }} accessibilityLabel="demo-pay" />
       {!module.active ? <T w={400} s={12} lh={1.45} color={c.ink55}>{t("demo.payNeedsActive")}</T> : null}
+      <Btn label={t("demo.cardPurchase")} icon="card" variant="ghost" busy={busy} disabled={!module.active || module.state.card.last4 === null} onPress={() => { void run(() => api.simulateCardPurchase()); }} accessibilityLabel="demo-card-purchase" />
       <Tag>{t("demo.eventsTag")}</Tag>
       {events.length === 0 ? <Card><T w={400} s={13} lh={1.45} color={c.ink55}>{t("demo.noEvents")}</T></Card> : [...events].reverse().map((e) => (
         <Card key={e.id} gap={4} pad={12}>

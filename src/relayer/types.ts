@@ -32,7 +32,7 @@ export type ModuleState = {
   balanceUsdcCents: number;
 };
 
-export type MovementKind = "deposit" | "withdrawal";
+export type MovementKind = "deposit" | "withdrawal" | "card";
 export type MovementStatus = "completed" | "pending" | "failed";
 export type Movement = {
   id: string; kind: MovementKind; status: MovementStatus; amountUsdcCents: number; at: number;
@@ -40,6 +40,8 @@ export type Movement = {
   fromLabel?: string; concept?: string; reference?: string; txHash?: string; amountMxnCents?: number;
   /** Retiro: recibo asociado y a quién («Mamá», «Banorte ···· 4310»). */
   receiptId?: string; toLabel?: string; toBank?: string;
+  /** Compra con tarjeta (Stripe Issuing): comercio y categoría; `failed` = rechazada (congelada, sin autorizar o sin saldo). */
+  merchant?: string; category?: string; declineReason?: "card_frozen" | "card_not_authorized" | "insufficient_balance";
 };
 
 export type Balance = { usdcCents: number; mxnCents: number; rate: number };
@@ -52,7 +54,7 @@ export type Receipt = {
   beneficiaryName: string; bankName: string; clabeLast4: string; createdAt: number; completedAt: number | null; failureCode: RelayerErrorCode | null;
 };
 
-export type EventType = "module.activated" | "kyc.approved" | "kyc.rejected" | "wallet.ready" | "card.issued" | "deposit.received" | "withdrawal.completed" | "module.deactivated";
+export type EventType = "module.activated" | "kyc.approved" | "kyc.rejected" | "wallet.ready" | "card.issued" | "deposit.received" | "card.transaction" | "withdrawal.completed" | "module.deactivated";
 export type ModuleEvent = { id: string; type: EventType; at: number; payload: Record<string, string | number | null> };
 
 /** Todo lo que `useModule` entrega a las pantallas en una sola foto. */

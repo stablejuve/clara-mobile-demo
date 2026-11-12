@@ -25,9 +25,9 @@ export function HomeScreen({ nav, module, openBalance }: AppCtx) {
           {module.active ? (
             <View style={{ gap: 4 }}>
               <T w={600} s={32} lh={1} ls={-0.025} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }}>
-                {formatCents(shown)} <T w={500} s={14} color={c.ink40}>USDC</T>
+                ${formatCents(usdcToMxnCents(shown))} <T w={500} s={14} color={c.ink40}>MXN</T>
               </T>
-              <T w={400} s={13} mono color={c.ink55}>≈ ${formatCents(usdcToMxnCents(shown))} MXN</T>
+              <T w={400} s={13} mono color={c.ink55}>≈ {formatCents(shown)} USDC</T>
             </View>
           ) : (
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>

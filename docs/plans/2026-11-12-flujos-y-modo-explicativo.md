@@ -1,6 +1,10 @@
 # Recibo · flujos que no se sienten fintech + modo explicativo de endpoints
 
-Fecha: 2026-11-12. Estado: **propuesta para revisar** (nada implementado de este plan).
+Fecha: 2026-11-12. Estado: **en curso**.
+
+Decisiones del 2026-11-12: tarjeta **automática** (A1 hecho); límite de gasto sin hoja propia por ahora, pero el modo explicativo
+lo cuenta en «Autorizar» (A3 parcial); se agregan **transacciones de tarjeta**; **B hecho** con enlaces a documentación por
+endpoint; montos con MXN primero y USDC de referencia. Pendientes: A2 (términos de tarjeta), A4–A6.
 
 Dos frentes:
 
