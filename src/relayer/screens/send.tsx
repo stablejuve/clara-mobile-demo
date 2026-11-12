@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle } from "react-native-svg";
 import type { AppCtx } from "../../ctx";
 import { useAction } from "../../hooks/useAction";
-import { useNow } from "../../hooks/useNow";
 import { t } from "../../i18n/es";
 import { useFaceIdHud } from "../../ui/FaceIdHud";
 import { DrawCheck, EASE_IOS, Eyebrow, Grabber, Group, Hairline, Ico, Keypad, type KeypadKey, PrimaryButton, SoftPill, Spinner, useShake } from "../../ui/kit";
@@ -14,7 +12,9 @@ import { useTheme } from "../../ui/ThemeProvider";
 import { beneBank, beneTitle } from "../beneficiaries";
 import type { SheetParams } from "../../navigation/routes";
 import { BeneRow, NewBeneRow, sortBenes } from "./beneRow";
-import { formatCents, mxnToUsdcCents, quoteFor, usdcToMxnCents } from "../money";
+import { DEMO_RATE, formatCents, mxnToUsdcCents, quoteFor, usdcToMxnCents } from "../money";
+import { useRate } from "../../hooks/useRate";
+import { RateBadge } from "./rateBadge";
 import type { Quote, Receipt } from "../types";
 
 /** «012 180 00123456789 9»: banco, plaza, cuenta, control. */
@@ -54,15 +54,23 @@ export function SendSheet(ctx: AppCtx & { params?: SheetParams["send"] }) {
   // ── Monto ──
   const [unit, setUnit] = useState<"mxn" | "usdc">("mxn");
   const [input, setInput] = useState("");
+  const live = useRate(api, DEMO_RATE);
   const v = parseFloat(input);
-  const usdc = !input || !v ? 0 : unit === "mxn" ? mxnToUsdcCents(Math.round(v * 100)) : Math.round(v * 100);
-  const check = usdc > 0 ? quoteFor(usdc, state.balanceUsdcCents) : null;
+  const usdc = !input || !v ? 0 : unit === "mxn" ? mxnToUsdcCents(Math.round(v * 100), live.rate) : Math.round(v * 100);
+  const check = usdc > 0 ? quoteFor(usdc, state.balanceUsdcCents, live.rate) : null;
   const amtErr = check && !check.ok ? (check.code === "insufficient_balance" ? t("rc.send.insufficient") : t("rc.send.minimum")) : null;
   const recv = check?.ok ? check.quote.amountMxnCents : 0;
   const amtText = (unit === "mxn" ? "$" : "") + (input || "0");
-  const convLine = !check ? t("rc.send.available", { amount: formatCents(usdcToMxnCents(state.balanceUsdcCents)) })
+  const convLine = !check ? t("rc.send.available", { amount: formatCents(usdcToMxnCents(state.balanceUsdcCents, live.rate)) })
     : amtErr ?? (unit === "mxn" ? t("rc.send.convMxn", { usdc: formatCents(usdc), mxn: formatCents(recv) }) : t("rc.send.convUsdc", { mxn: formatCents(recv) }));
   const [quote, setQuote] = useState<Quote | null>(null);
+  // Cotización (POST /v1/offramp/quote) al teclear y cada vez que cambia la tasa, en el monto y en la revisión.
+  const estimateFor = idx === 2 && quote ? quote.amountUsdcCents : idx === 1 ? usdc : 0;
+  useEffect(() => {
+    if (estimateFor <= 0) return;
+    const id = setTimeout(() => { void api.estimateSend(estimateFor).catch(() => {}); }, 600);
+    return () => clearTimeout(id);
+  }, [estimateFor, live.rate, api]);
   const review = async () => {
     if (!check?.ok) { shake(); return; }
     if (!beneId) return;
@@ -70,18 +78,20 @@ export function SendSheet(ctx: AppCtx & { params?: SheetParams["send"] }) {
     if (q) { setQuote(q); setIdx(2); }
   };
 
-  // ── Revisar ──
-  const now = useNow(1000);
-  const left = quote ? Math.max(0, Math.min(60, Math.ceil((quote.expiresAt - now) / 1000))) : 60;
+  // ── Revisar ── (Bridge no bloquea la tasa: lo que se ve es estimado y se recotiza al confirmar)
+  const liveQuote = quote ? quoteFor(quote.amountUsdcCents, state.balanceUsdcCents + (state.send.status === "submitted" ? quote.amountUsdcCents : 0), live.rate) : null;
+  const shownQuote = liveQuote?.ok ? liveQuote.quote : quote;
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [confirming, setConfirming] = useState(false);
   const confirm = async () => {
-    if (!quote || confirming) return;
-    if (left <= 0) { if (!beneId) return; const q = await run(() => api.quoteSend(quote.amountUsdcCents, beneId)); if (q) setQuote(q); return; }
+    if (!quote || confirming || !beneId) return;
     setConfirming(true);
     try {
       if (!(await hud.auth(t("common.ready"), t("rc.send.authReason")))) return;
-      const r = await run(() => api.confirmSend(quote.id));
+      const fresh = await run(() => api.quoteSend(quote.amountUsdcCents, beneId));
+      if (!fresh) return;
+      setQuote(fresh);
+      const r = await run(() => api.confirmSend(fresh.id));
       if (r) { setReceipt(r); setIdx(3); }
     } finally { setConfirming(false); }
   };
@@ -138,6 +148,7 @@ export function SendSheet(ctx: AppCtx & { params?: SheetParams["send"] }) {
                 <Ico name="swap" size={13} color={c.ink72} sw={2.2} />
               </Pressable>
               <View style={{ height: 20 }}><T w={400} s={14} mono color={amtErr ? c.error : c.ink55}>{error && idx === 1 ? error : convLine}</T></View>
+              <RateBadge live={live} />
             </View>
             <Keypad onKey={(k) => setInput((s) => amountKey(s, k))} />
             <PrimaryButton label={t("rc.send.review")} dim={!check?.ok} onPress={() => { void review(); }} accessibilityLabel="send-review" />
@@ -147,15 +158,15 @@ export function SendSheet(ctx: AppCtx & { params?: SheetParams["send"] }) {
             <View style={{ paddingTop: 56, paddingBottom: 36, alignItems: "center", gap: 8 }}>
               <T w={500} s={10.5} ls={0.08} mono color={c.ink55}>{t("rc.send.youReceive").toUpperCase()}</T>
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-                <T w={600} s={48} lh={1} ls={-0.035} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }}>${formatCents(quote?.amountMxnCents ?? 0)}</T>
+                <T w={600} s={48} lh={1} ls={-0.035} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }}>≈ ${formatCents(shownQuote?.amountMxnCents ?? 0)}</T>
                 <T w={500} s={15} color={c.ink40}>MXN</T>
               </View>
             </View>
             <View style={{ borderRadius: RADIUS.card, backgroundColor: c.card, overflow: "hidden" }}>
-              {quote ? [
-                [t("rc.send.youSend"), `${formatCents(quote.amountUsdcCents)} USDC`],
-                [t("rc.send.fee"), `${formatCents(quote.feeUsdcCents)} USDC`],
-                [t("rc.send.rate"), `$${quote.rate.toFixed(2)}`],
+              {shownQuote ? [
+                [t("rc.send.youSend"), `${formatCents(shownQuote.amountUsdcCents)} USDC`],
+                [t("rc.send.fee"), `${formatCents(shownQuote.feeUsdcCents)} USDC`],
+                [t("rc.send.rate"), `$${live.rate.toFixed(4)}`],
                 [t("rc.send.to"), bene ? beneTitle(bene) : "—"],
                 [t("rc.bene.account"), bene ? beneBank(bene) : "—"],
               ].map(([k, val]) => (
@@ -165,14 +176,11 @@ export function SendSheet(ctx: AppCtx & { params?: SheetParams["send"] }) {
                 </View>
               )) : null}
             </View>
-            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <Svg width={18} height={18} viewBox="0 0 20 20" style={{ transform: [{ rotate: "-90deg" }] }}>
-                <Circle cx={10} cy={10} r={8} fill="none" stroke={c.ink08} strokeWidth={2.2} />
-                <Circle cx={10} cy={10} r={8} fill="none" stroke={left > 0 ? c.ink55 : c.error} strokeWidth={2.2} strokeLinecap="round" strokeDasharray="50.3" strokeDashoffset={50.3 * (1 - left / 60)} />
-              </Svg>
-              <T w={500} s={13} mono color={left > 0 ? c.ink55 : c.error}>{error && idx === 2 ? error : left > 0 ? t("rc.send.fixed", { s: left }) : t("rc.send.expired")}</T>
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 10, paddingHorizontal: 8 }}>
+              <RateBadge live={live} />
+              <T w={400} s={13} lh={1.4} color={error && idx === 2 ? c.error : c.ink55} style={{ textAlign: "center" }}>{error && idx === 2 ? error : t("rc.send.estimated")}</T>
             </View>
-            <PrimaryButton label={left > 0 ? t("rc.send.confirm") : t("rc.send.requote")} icon={left > 0 ? "faceId" : undefined} dim={confirming} onPress={() => { void confirm(); }} accessibilityLabel="send-confirm" />
+            <PrimaryButton label={t("rc.send.confirm")} icon="faceId" dim={confirming} onPress={() => { void confirm(); }} accessibilityLabel="send-confirm" />
           </View>
           {/* Listo */}
           <View style={{ width, alignItems: "center", paddingTop: 100, paddingHorizontal: 28, paddingBottom: bottom }}>

@@ -10,7 +10,9 @@ import { T } from "../../ui/primitives";
 import { RADIUS } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
 import { movementMxnCents, movementSub, movementTitle } from "../display";
-import { formatCents, usdcToMxnCents } from "../money";
+import { DEMO_RATE, formatCents, usdcToMxnCents } from "../money";
+import { useRate } from "../../hooks/useRate";
+import { RateBadge } from "./rateBadge";
 import type { Movement } from "../types";
 
 const ROW_H = 62.5;
@@ -20,6 +22,7 @@ export function BalanceScreen({ nav, module }: AppCtx) {
   const { c } = useTheme();
   const { state, movements } = module;
   const shown = useTween(state.balanceUsdcCents);
+  const live = useRate(module.api, DEMO_RATE);
   const now = useNow(60_000);
   // Los movimientos que ya estaban al abrir no se animan; los que llegan después sí.
   const initial = useRef(new Set(movements.map((m) => m.id))).current;
@@ -27,10 +30,11 @@ export function BalanceScreen({ nav, module }: AppCtx) {
     <LargeTitleScreen title={t("rc.name")} back={t("tab.benefits")} titleGap={0}>
       <View style={{ paddingTop: 34, paddingHorizontal: 20, paddingBottom: 30, alignItems: "center", gap: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-          <T w={600} s={formatCents(usdcToMxnCents(shown)).length > 9 ? 48 : 56} lh={1} ls={-0.035} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }} accessibilityLabel="balance-mxn">${formatCents(usdcToMxnCents(shown))}</T>
+          <T w={600} s={formatCents(usdcToMxnCents(shown, live.rate)).length > 9 ? 48 : 56} lh={1} ls={-0.035} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }} accessibilityLabel="balance-mxn">${formatCents(usdcToMxnCents(shown, live.rate))}</T>
           <T w={500} s={15} color={c.ink40}>MXN</T>
         </View>
         <T w={400} s={14} mono color={c.ink55} accessibilityLabel="balance-usdc">≈ {formatCents(shown)} USDC</T>
+        <View style={{ paddingTop: 4 }}><RateBadge live={live} /></View>
       </View>
       <View style={{ flexDirection: "row", justifyContent: "center", gap: 40, paddingBottom: 32 }}>
         <Action icon="card" label={t("rc.card")} onPress={() => nav("card")} />

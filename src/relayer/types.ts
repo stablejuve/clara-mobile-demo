@@ -23,7 +23,7 @@ export type NewBeneficiary = Pick<Beneficiary, "owner" | "name" | "alias" | "ema
 export type ModuleState = {
   module: ModuleStatus;
   kyc: { status: KycStatus; approvedAt: number | null; rejectionReasons: readonly string[] };
-  wallet: { status: WalletStatus; address: string | null; chain: "base" };
+  wallet: { status: WalletStatus; address: string | null; chain: "avalanche" };
   /** `authorizedAt`: la autorización on-chain única (D3); la tarjeta gasta sólo después de ella. */
   card: { status: CardStatus; last4: string | null; expiry: string | null; authorizedAt: number | null };
   pass: { status: PassStatus; provider: WalletProvider | null };
@@ -47,6 +47,9 @@ export type Movement = {
 export type Balance = { usdcCents: number; mxnCents: number; rate: number };
 export type KycLinks = { tosLink: string; kycLink: string; redirectUri: string };
 export type CardDetails = ModuleState["card"] & { holder: string; number: string | null; cvv: string | null };
+export type Rate = { rate: number; updatedAt: number };
+/** Estimación (POST /v1/offramp/quote): no bloquea la tasa ni toca el estado. */
+export type Estimate = { ok: true; amountUsdcCents: number; feeUsdcCents: number; netUsdcCents: number; amountMxnCents: number; rate: number; updatedAt: number } | { ok: false; code: RelayerErrorCode; rate: number; updatedAt: number };
 export type Quote = { id: string; amountUsdcCents: number; feeUsdcCents: number; netUsdcCents: number; amountMxnCents: number; rate: number; expiresAt: number };
 export type ReceiptStatus = "submitted" | "completed" | "failed";
 export type Receipt = {

@@ -13,7 +13,7 @@ export const ENDORSEMENT_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const INITIAL_STATE: ModuleState = {
   module: "off",
   kyc: { status: "not_started", approvedAt: null, rejectionReasons: [] },
-  wallet: { status: "none", address: null, chain: "base" },
+  wallet: { status: "none", address: null, chain: "avalanche" },
   card: { status: "none", last4: null, expiry: null, authorizedAt: null },
   pass: { status: "not_added", provider: null },
   beneficiaries: [],
@@ -53,10 +53,10 @@ export function passkeyCreated(s: ModuleState): Result {
   if (s.module !== "kyc" || s.kyc.status !== "approved" || s.wallet.status !== "none") return fail("invalid_transition");
   return ok({ ...s, module: "wallet_ready", wallet: { ...s.wallet, status: "passkey_created" } });
 }
-/** Dirección en Base lista: passkey_created → address_ready, module active. */
+/** Dirección en Avalanche lista: passkey_created → address_ready, module active. */
 export function walletReady(s: ModuleState, address: string): Result {
   if (s.wallet.status !== "passkey_created") return fail("invalid_transition");
-  return ok({ ...s, module: "active", wallet: { status: "address_ready", address, chain: "base" } });
+  return ok({ ...s, module: "active", wallet: { status: "address_ready", address, chain: "avalanche" } });
 }
 
 // ── Saldo ───────────────────────────────────────────────────────────────────

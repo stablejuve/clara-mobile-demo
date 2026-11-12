@@ -36,7 +36,7 @@ test("camino feliz: module off → terms_pending → kyc → wallet_ready → ac
   expect([M.INITIAL_STATE.module, atTerms.module, atKyc.module, passkey.module, active.module]).toEqual(["off", "terms_pending", "kyc", "wallet_ready", "active"]);
   expect([kycIncomplete.kyc.status, kycReview.kyc.status, kycApproved.kyc.status]).toEqual(["incomplete", "under_review", "approved"]);
   expect(kycApproved.kyc.approvedAt).toBe(NOW);
-  expect(active.wallet).toEqual({ status: "address_ready", address: "0xabc", chain: "base" });
+  expect(active.wallet).toEqual({ status: "address_ready", address: "0xabc", chain: "avalanche" });
   expect(funded.balanceUsdcCents).toBe(500_00);
 });
 

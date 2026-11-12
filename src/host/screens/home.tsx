@@ -2,7 +2,8 @@ import { View } from "react-native";
 import type { AppCtx } from "../../ctx";
 import { useTween } from "../../hooks/useTween";
 import { t } from "../../i18n/es";
-import { formatCents, usdcToMxnCents } from "../../relayer/money";
+import { DEMO_RATE, formatCents, usdcToMxnCents } from "../../relayer/money";
+import { useRate } from "../../hooks/useRate";
 import { cardShadow, Eyebrow, Group, Hairline, Ico, ListRow, Press } from "../../ui/kit";
 import { LargeTitleScreen } from "../../ui/LargeTitle";
 import { PromoCard } from "../PromoCard";
@@ -14,6 +15,7 @@ import { useTheme } from "../../ui/ThemeProvider";
 export function HomeScreen({ nav, module, openBalance }: AppCtx) {
   const { c, scheme } = useTheme();
   const shown = useTween(module.state.balanceUsdcCents);
+  const live = useRate(module.api, DEMO_RATE);
   return (
     <LargeTitleScreen title={t("home.greeting")} smallTitle={t("tab.home")} brand={t("home.greetingTag")}>
       <View style={{ paddingHorizontal: 16, gap: 22 }}>
@@ -26,7 +28,7 @@ export function HomeScreen({ nav, module, openBalance }: AppCtx) {
             </View>
             <View style={{ gap: 4 }}>
               <T w={600} s={32} lh={1} ls={-0.025} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }}>
-                ${formatCents(usdcToMxnCents(shown))} <T w={500} s={14} color={c.ink40}>MXN</T>
+                ${formatCents(usdcToMxnCents(shown, live.rate))} <T w={500} s={14} color={c.ink40}>MXN</T>
               </T>
               <T w={400} s={13} mono color={c.ink55}>≈ {formatCents(shown)} USDC</T>
             </View>

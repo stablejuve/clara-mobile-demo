@@ -1,3 +1,4 @@
+import * as Clipboard from "expo-clipboard";
 import { BlurView } from "expo-blur";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Platform, Pressable, useWindowDimensions, View } from "react-native";
@@ -16,7 +17,8 @@ import { MovementRow } from "./balance";
 import { movementSub, movementTitle } from "../display";
 import { useNow } from "../../hooks/useNow";
 import { tracer } from "../trace";
-import { formatCents, usdcToMxnCents } from "../money";
+import { DEMO_RATE, formatCents, usdcToMxnCents } from "../money";
+import { useRate } from "../../hooks/useRate";
 import type { CardDetails } from "../types";
 
 type Phase = "none" | "issuing" | "authorize" | "expired" | "reconfirming" | "active";
@@ -39,7 +41,17 @@ export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
   const [details, setDetails] = useState<CardDetails | null>(null);
   const [frozenUi, setFrozenUi] = useState(card.status === "frozen");
   const [flipped, setFlipped] = useState(false);
+  // Revelar número/CVV pide Face ID y se oculta solo al minuto (Stripe Issuing Elements en el backend real).
+  const reveal = async () => {
+    if (frozenUi) return;
+    if (flipped) { setFlipped(false); return; }
+    if (await hud.auth(t("rc.card.revealed"), t("rc.card.revealReason"))) setFlipped(true);
+  };
+  useEffect(() => { if (!flipped) return; const id = setTimeout(() => setFlipped(false), 60_000); return () => clearTimeout(id); }, [flipped]);
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = (k: string, v: string) => { void Clipboard.setStringAsync(v.replace(/\s/g, "")).then(() => { setCopied(k); setTimeout(() => setCopied(null), 1500); }); };
   const benes = sortBenes(state.beneficiaries);
+  const live = useRate(api, DEMO_RATE);
   const [online, setOnline] = useState(true);
   const [contactless, setContactless] = useState(true);
   const p = kyc.draft.personal;
@@ -113,7 +125,7 @@ export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
                   { rotateX: enter.interpolate({ inputRange: [0, 1], outputRange: ["18deg", "0deg"] }) },
                 ],
               }}>
-                <Pressable onPress={() => { if (!frozenUi) setFlipped((f) => !f); }} accessibilityLabel="card-flip" style={[cardLift, { width: cardW, height: cardH, borderRadius: cardRadius(cardW) }]}>
+                <Pressable onPress={() => { void reveal(); }} accessibilityLabel="card-flip" style={[cardLift, { width: cardW, height: cardH, borderRadius: cardRadius(cardW) }]}>
                   <Animated.View style={[faceStyle, { transform: [{ perspective: 1200 }, { rotateY: frontRot }] }]}>
                     <CardFront width={cardW} brand={t("rc.name")} mode="active" last4={details?.last4 ?? card.last4} holder={details?.holder ?? holder} expiry={details?.expiry ?? card.expiry}>
                       <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: frost, alignItems: "center", justifyContent: "center" }}>
@@ -140,13 +152,40 @@ export function CardScreen({ module, faceId, nav, kyc }: AppCtx) {
               <View style={{ gap: LARGE_GAP }}>
                 <View style={{ alignItems: "center", gap: 2, marginTop: -8 }}>
                   <T w={400} s={13} color={c.ink55}>{t("rc.card.available")}</T>
-                  <T w={600} s={24} ls={-0.02} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }}>${formatCents(usdcToMxnCents(state.balanceUsdcCents))} MXN</T>
+                  <T w={600} s={24} ls={-0.02} color={c.inkStrong} style={{ fontVariant: ["tabular-nums"] }}>${formatCents(usdcToMxnCents(state.balanceUsdcCents, live.rate))} MXN</T>
                 </View>
                 <View style={{ flexDirection: "row", justifyContent: "center", gap: 36 }}>
                   <CardAction icon="arrowUpRight" label={t("rc.card.withdraw")} onPress={() => nav("send")} a11y="card-withdraw" />
-                  <CardAction icon="eye" label={flipped ? t("rc.card.hideShort") : t("rc.card.details")} on={flipped} disabled={frozenUi} onPress={() => setFlipped((f) => !f)} a11y="card-details" />
+                  <CardAction icon="eye" label={flipped ? t("rc.card.hideShort") : t("rc.card.details")} on={flipped} disabled={frozenUi} onPress={() => { void reveal(); }} a11y="card-details" />
                   <CardAction icon="freeze" label={frozenUi ? t("rc.card.unfreeze") : t("rc.card.freezeShort")} on={frozenUi} onPress={() => toggleFreeze(!frozenUi)} a11y="card-freeze" />
                 </View>
+                <Section title={t("rc.card.data")}>
+                  {([
+                    ["holder", t("rc.card.holder"), details?.holder ?? holder ?? "", details?.holder ?? holder ?? ""],
+                    ["number", t("rc.card.number"), `•••• •••• •••• ${details?.last4 ?? card.last4 ?? ""}`, details?.number ?? ""],
+                    ["expiry", t("rc.card.expiresLabel"), "••/••", details?.expiry ?? ""],
+                    ["cvv", "CVV", "•••", details?.cvv ?? ""],
+                  ] as const).map(([k, label, masked, full], n) => (
+                    <View key={k}>
+                      {n > 0 ? <Hairline /> : null}
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 16, minHeight: 50 }}>
+                        <T w={400} s={15} color={c.ink55} style={{ width: 84 }}>{label}</T>
+                        <T w={500} s={15} mono={k !== "holder"} color={c.inkStrong} style={{ flex: 1, textAlign: "right" }} selectable={flipped}>{flipped || k === "holder" ? full : masked}</T>
+                        {flipped && k !== "holder" ? (
+                          <Pressable onPress={() => copy(k, full)} hitSlop={8} accessibilityLabel={`card-copy-${k}`}>
+                            <Ico name={copied === k ? "check" : "copy"} size={16} color={copied === k ? c.success : c.ink40} sw={2} />
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    </View>
+                  ))}
+                  <Hairline inset={0} />
+                  <Pressable onPress={() => { void reveal(); }} disabled={frozenUi} accessibilityLabel="card-reveal"
+                    style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 13, opacity: frozenUi ? 0.4 : 1, backgroundColor: pressed ? c.ink04 : "transparent" })}>
+                    <Ico name={flipped ? "eye" : "faceId"} size={17} color={c.brand} sw={2} />
+                    <T w={500} s={15} color={c.brand}>{flipped ? t("rc.card.hideData") : t("rc.card.showData")}</T>
+                  </Pressable>
+                </Section>
                 <Section title={t("rc.card.transactions")}>
                   {cardMoves.length === 0 ? (
                     <View style={{ paddingVertical: 22, paddingHorizontal: 16, alignItems: "center" }}>

@@ -154,10 +154,10 @@ Patrón de firma igual que relayer-core (`…/prepare` devuelve la transacción 
 ### Tarjeta
 | # | Endpoint (nuestro) | Valida | Llama a |
 |---|---|---|---|
-| T1 | `POST /v1/end-users/{id}/card` (lo dispara el backend al aprobarse el KYC) | endorsement `cards` = approved y < 24 h; hay `stripe_cardholder_id`; wallet creada; no hay otra tarjeta activa | Stripe `POST /v1/issuing/cards` `type=virtual, status=active, currency=usd, crypto_wallet{chain:base, currency:usdc, type:standard, address}` |
-| T2 | `POST …/card/allowance/prepare` `{ amount_usdc }` | tarjeta activa; monto > 0 | Base RPC: arma `approve(spender_programa, monto)` |
+| T1 | `POST /v1/end-users/{id}/card` (lo dispara el backend al aprobarse el KYC) | endorsement `cards` = approved y < 24 h; hay `stripe_cardholder_id`; wallet creada; no hay otra tarjeta activa | Stripe `POST /v1/issuing/cards` `type=virtual, status=active, currency=usd, crypto_wallet{chain:avalanche_c_chain, currency:usdc, type:standard, address}` |
+| T2 | `POST …/card/allowance/prepare` `{ amount_usdc }` | tarjeta activa; monto > 0 | Avalanche RPC: arma `approve(spender_programa, monto)` |
 | T3 | `POST …/card/allowance/confirm` `{ signed_tx }` | firma de la passkey del usuario | Turnkey firma/manda; lee `allowance()` |
-| T4 | `GET …/card` | — | Stripe card + Base `balanceOf(USDC)` y `allowance()` ⇒ «Disponible para gastar» = min(saldo, allowance) |
+| T4 | `GET …/card` | — | Stripe card + Avalanche `balanceOf(USDC)` y `allowance()` ⇒ «Disponible para gastar» = min(saldo, allowance) |
 | T5 | `PATCH …/card` `{ status: active|inactive }` | dueño de la tarjeta | Stripe `POST /v1/issuing/cards/{id}` |
 | T6 | `POST …/card/reveal` | Face ID / sesión | Stripe ephemeral key → Issuing Elements (PAN/CVV nunca pasan por nosotros) |
 | T7 | `POST …/card/provisioning` | dispositivo | Stripe push provisioning |
@@ -167,9 +167,17 @@ Patrón de firma igual que relayer-core (`…/prepare` devuelve la transacción 
 | # | Endpoint (nuestro) | Valida | Llama a |
 |---|---|---|---|
 | R1 | `POST /v1/offramp/quote` `{ source_currency: usdc, source_amount | destination_amount, destination_currency: mxn, destination_payment_rail: spei }` (**existe**) | monto ≥ mínimo (50 MXN); moneda/riel soportados | Bridge `GET /v0/exchange_rates?from=usd&to=mxn` (`sell_rate`) + nuestra comisión. Estimación, no bloqueo |
-| R2 | `POST …/withdrawals/prepare` `{ beneficiary_id, amount_usdc }` | beneficiario con external account **verificada**; saldo on-chain ≥ monto; mínimo; **recotiza** (R1) | Bridge `POST /v0/transfers` `source{payment_rail:base, currency:usdc, from_address}` → `destination{payment_rail:spei, currency:mxn, external_account_id}` ⇒ `source_deposit_instructions.to_address`; arma la transferencia USDC a esa dirección |
+| R2 | `POST …/withdrawals/prepare` `{ beneficiary_id, amount_usdc }` | beneficiario con external account **verificada**; saldo on-chain ≥ monto; mínimo; **recotiza** (R1) | Bridge `POST /v0/transfers` `source{payment_rail:avalanche_c_chain, currency:usdc, from_address}` → `destination{payment_rail:spei, currency:mxn, external_account_id}` ⇒ `source_deposit_instructions.to_address`; arma la transferencia USDC a esa dirección |
 | R3 | `POST …/withdrawals/confirm` `{ transfer_id, signed_tx }` | firma de la passkey; el transfer sigue `awaiting_funds` | Turnkey manda el USDC a Bridge |
 | R4 | `GET /v1/payouts/{reference}/status` (**existe**, nivel integrador) | — | Bridge `GET /v0/transfers/{id}` |
 | R5 | `POST /hooks/bridge` (**existe**) | firma de Bridge | ← `transfer` updates: `payment_processed` ⇒ completado con folio SPEI; `returned`/`refunded` ⇒ el USDC regresa a la wallet |
 
 El MXN final lo fija Bridge cuando recibe el USDC (tasa de ese momento). Por eso la app muestra «≈ $X MXN (estimado)» y no promete una cifra exacta.
+
+### Red y tipo de cambio en la demo (2026-11-12)
+- La red de la wallet es **Avalanche C-Chain** (en los logs; el flujo de usuario no menciona la red). Ojo: la guía de tarjetas
+  no custodiales de Bridge lista Tempo, Solana, Base y Linea; Avalanche aparece en el fondeo *top-up*. Confirmar con Bridge
+  que el programa de tarjetas no custodiales soporta Avalanche antes de la fase de backend.
+- El tipo de cambio es **en vivo** (`liveRate`, escalones de 15 s; Bridge ~30 s): el indicador «1 USD = $X MXN ▲/▼ · hace N s»
+  se ve en Saldo, en el monto y en la revisión; `estimateSend` (= `POST /v1/offramp/quote`) se registra al teclear y cuando
+  cambia la tasa; `quoteSend` (= `…/withdrawals/prepare`) recotiza al revisar y otra vez al confirmar. Sin «precio fijo 60 s».

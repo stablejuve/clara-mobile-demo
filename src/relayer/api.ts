@@ -1,4 +1,4 @@
-import type { Balance, Beneficiary, CardDetails, KycLinks, ModuleEvent, ModuleSnapshot, ModuleState, Movement, NewBeneficiary, Quote, Receipt, WalletProvider } from "./types";
+import type { Balance, Beneficiary, CardDetails, Estimate, Rate, KycLinks, ModuleEvent, ModuleSnapshot, ModuleState, Movement, NewBeneficiary, Quote, Receipt, WalletProvider } from "./types";
 import type { Scenario } from "./mock/scenarios";
 import type { KycSubmission } from "./kyc";
 
@@ -25,6 +25,11 @@ export type RelayerModuleApi = {
   listBeneficiaries(): Promise<Beneficiary[]>;
   /** Nueva cuenta CLABE (asistente como el de relayer-core): entra en `pending_verification`; Bridge la verifica en segundo plano. */
   addBeneficiary(input: NewBeneficiary): Promise<Beneficiary>;
+  /** Tipo de cambio vigente (lectura de fondo). */
+  getRate(): Promise<Rate>;
+  /** Estimación mientras el usuario teclea o cuando cambia la tasa: no reserva nada. */
+  estimateSend(amountUsdcCents: number): Promise<Estimate>;
+  /** Prepara el retiro con la tasa del momento (recotiza; la tasa no se bloquea en Bridge). */
   quoteSend(amountUsdcCents: number, beneficiaryId: string): Promise<Quote>;
   confirmSend(quoteId: string): Promise<Receipt>;
   getReceipt(id: string): Promise<Receipt>;

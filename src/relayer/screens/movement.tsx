@@ -28,7 +28,7 @@ export function MovementSheet(ctx: AppCtx & { params: SheetParams["movement"] })
       [t("rc.card"), `Visa ···· ${state.card.last4 ?? ""}`]]
     : isIn
     ? [[t("rc.mv.from"), m.fromLabel ?? t("common.employer")], [t("rc.mv.concept"), m.concept ?? "—"], [t("rc.mv.reference"), m.reference ?? "—"],
-      [t("rc.mv.equals"), formatUsdc(m.amountUsdcCents)], [t("rc.mv.network"), "Base"]]
+      [t("rc.mv.equals"), formatUsdc(m.amountUsdcCents)]]
     : [[t("rc.send.to"), m.toLabel ?? "—"], [t("rc.bene.account"), m.toBank ?? "—"], [t("rc.send.youReceive"), receipt ? formatMxn(receipt.amountMxnCents) : "—"],
       [t("rc.send.fee"), receipt ? formatUsdc(receipt.feeUsdcCents) : "—"], [t("rc.send.rate"), receipt ? `$${receipt.rate.toFixed(2)}` : "—"], [t("rc.mv.folio"), receipt?.folio ?? "—"]];
   return (

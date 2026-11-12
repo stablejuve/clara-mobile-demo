@@ -1,6 +1,6 @@
 import type { KeyValueStorage } from "../../storage/kv";
 import type { RelayerDemoApi, RelayerModuleApi } from "../api";
-import { DEMO_RATE, mxnToUsdcCents, QUOTE_TTL_MS, quoteFor, usdcToMxnCents } from "../money";
+import { liveRate, mxnToUsdcCents, QUOTE_TTL_MS, quoteFor, rateUpdatedAt, usdcToMxnCents } from "../money";
 import * as M from "../state";
 import { type Balance, type EventType, type ModuleEvent, type ModuleSnapshot, type ModuleState, type Movement, type Quote, type Receipt, RelayerError } from "../types";
 import { bankFor, clabeValid } from "../clabe";
@@ -24,6 +24,8 @@ export type MockOptions = {
   later?: (fn: () => void, ms: number) => void;
   /** Modo explicativo: avisa lo que en el backend real llegaría por webhook. */
   trace?: (key: BackgroundKey) => void;
+  /** Tipo de cambio por instante (default `liveRate`; los tests lo fijan). */
+  rate?: (now: number) => number;
 };
 
 export const randomLatency = (): Promise<void> => new Promise((r) => setTimeout(r, 300 + Math.floor(Math.random() * 900)));
@@ -36,6 +38,7 @@ export function createMockApi(opts: MockOptions): MockApi {
   const delay = opts.delay ?? randomLatency;
   const later = opts.later ?? ((fn, ms) => { setTimeout(fn, ms); });
   const trace = opts.trace ?? (() => {});
+  const rateNow = () => (opts.rate ?? liveRate)(now());
 
   let state: ModuleState = M.INITIAL_STATE;
   let movements: Movement[] = [];
@@ -104,7 +107,7 @@ export function createMockApi(opts: MockOptions): MockApi {
   let purchaseSeq = 0;
   const simulateCardPurchase: MockApi["simulateCardPurchase"] = async (input) => {
     const p = input ?? CARD_PURCHASES[purchaseSeq++ % CARD_PURCHASES.length];
-    const usdc = mxnToUsdcCents(p.amountMxnCents);
+    const usdc = mxnToUsdcCents(p.amountMxnCents, rateNow());
     const r = M.cardPurchase(state, usdc);
     if ("code" in r) throw new RelayerError(r.code);
     state = r.state;
@@ -157,7 +160,7 @@ export function createMockApi(opts: MockOptions): MockApi {
       for (const b of DEMO_BENEFICIARIES) applySafe(M.addBeneficiary(state, { ...b, createdAt: now() }));
       autoIssue();
       event("module.activated", { end_user: DEMO_USER.email });
-      event("wallet.ready", { address: DEMO_ADDRESS, chain: "base" });
+      event("wallet.ready", { address: DEMO_ADDRESS, chain: "avalanche" });
       emit();
       later(() => { if (state.module === "active" && movements.length === 0) void simulateEmployerDeposit(DEFAULT_DEPOSIT); }, BACKGROUND_MS.firstPayroll);
       return { address: DEMO_ADDRESS };
@@ -165,7 +168,8 @@ export function createMockApi(opts: MockOptions): MockApi {
 
     async getBalance(): Promise<Balance> {
       await tick();
-      return { usdcCents: state.balanceUsdcCents, mxnCents: usdcToMxnCents(state.balanceUsdcCents), rate: DEMO_RATE };
+      const rate = rateNow();
+      return { usdcCents: state.balanceUsdcCents, mxnCents: usdcToMxnCents(state.balanceUsdcCents, rate), rate };
     },
 
     async listMovements() { await tick(); return snapshot().movements as Movement[]; },
@@ -190,6 +194,16 @@ export function createMockApi(opts: MockOptions): MockApi {
 
     async addToWallet(provider) { await tick(); return apply(M.addToWallet(state, provider)); },
 
+    async getRate() { await tick(); return { rate: rateNow(), updatedAt: rateUpdatedAt(now()) }; },
+
+    async estimateSend(amountUsdcCents) {
+      await tick();
+      const rate = rateNow();
+      const updatedAt = rateUpdatedAt(now());
+      const q = quoteFor(amountUsdcCents, state.balanceUsdcCents, rate);
+      return q.ok ? { ok: true, ...q.quote, updatedAt } : { ok: false, code: q.code, rate, updatedAt };
+    },
+
     async listBeneficiaries() { await tick(); return [...state.beneficiaries]; },
 
     async addBeneficiary(input) {
@@ -204,7 +218,7 @@ export function createMockApi(opts: MockOptions): MockApi {
 
     async quoteSend(amountUsdcCents, beneficiaryId) {
       await tick();
-      const q = quoteFor(amountUsdcCents, state.balanceUsdcCents);
+      const q = quoteFor(amountUsdcCents, state.balanceUsdcCents, rateNow());
       if (!q.ok) throw new RelayerError(q.code);
       const quote: Quote = { id: id("q"), ...q.quote, expiresAt: now() + QUOTE_TTL_MS };
       apply(M.quoteSend(state, quote.id, amountUsdcCents, beneficiaryId));

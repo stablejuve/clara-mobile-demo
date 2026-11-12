@@ -10,7 +10,7 @@ const NOW = Date.parse("2026-11-11T12:00:00Z");
 
 function harness(scenario: Scenario = "happy") {
   const queue: (() => void)[] = [];
-  const api = createMockApi({ storage: memoryKv({ "relayer.scenario.v1": scenario }), now: () => NOW, delay: async () => {}, later: (fn) => { queue.push(fn); } });
+  const api = createMockApi({ storage: memoryKv({ "relayer.scenario.v1": scenario }), now: () => NOW, delay: async () => {}, later: (fn) => { queue.push(fn); }, rate: () => 17.25 });
   const flush = () => { while (queue.length) queue.shift()!(); };
   return { api, flush };
 }

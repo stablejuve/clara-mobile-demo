@@ -24,7 +24,7 @@ test("formatos", () => {
   expect(formatCents(123456789)).toBe("1,234,567.89");
   expect(formatUsdc(49275)).toBe("492.75 USDC");
   expect(formatMxn(850000)).toBe("$8,500.00 MXN");
-  expect(formatRate(17.25)).toBe("1 USDC = $17.25 MXN");
+  expect(formatRate(17.25)).toBe("1 USD = $17.2500 MXN");
 });
 
 test("parseAmount: punto decimal, comas de miles, máximo 2 decimales", () => {
@@ -43,4 +43,14 @@ test("quoteFor: comisión dentro del monto; mínimo 50 MXN recibidos; saldo sufi
   expect(quoteFor(0, 10_000)).toEqual({ ok: false, code: "below_minimum" });
   expect(quoteFor(100_00, 50_00)).toEqual({ ok: false, code: "insufficient_balance" });
   expect(quoteFor(100_00, 100_00).ok).toBe(true);
+});
+
+test("tipo de cambio en vivo: escalones de 15 s alrededor de 17.25, determinista", () => {
+  const { liveRate, rateUpdatedAt, RATE_STEP_MS } = require("../src/relayer/money");
+  const t0 = Date.UTC(2026, 10, 12, 12, 0, 0);
+  expect(liveRate(t0)).toBe(liveRate(t0 + 1000));
+  expect(Math.abs(liveRate(t0) - 17.25)).toBeLessThan(0.12);
+  const rates = new Set(Array.from({ length: 8 }, (_, i) => liveRate(t0 + i * RATE_STEP_MS)));
+  expect(rates.size).toBeGreaterThan(4);
+  expect(rateUpdatedAt(t0 + 7_000) % RATE_STEP_MS).toBe(0);
 });

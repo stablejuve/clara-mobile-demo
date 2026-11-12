@@ -8,8 +8,8 @@ test("catálogo: cada entrada tiene ruta, descripción y documentación; las por
     expect([k, (e.quiet || e.docs.length > 0) && e.docs.every((d) => d.url.startsWith("https://"))]).toEqual([k, true]);
   }
   // Los que ya existen en relayer-core.
-  expect(ENDPOINTS.quoteSend).toMatchObject({ method: "POST", path: "/v1/offramp/quote", status: "exists" });
-  expect(ENDPOINTS.confirmSend).toMatchObject({ method: "POST", path: "/v1/end-users/{id}/withdrawals", status: "planned", nearest: "POST /v1/payouts (nivel integrador)" });
+  expect(ENDPOINTS.estimateSend).toMatchObject({ method: "POST", path: "/v1/offramp/quote", status: "exists" });
+  expect(ENDPOINTS.confirmSend).toMatchObject({ method: "POST", path: "/v1/end-users/{id}/withdrawals/confirm", status: "planned" });
   expect(ENDPOINTS.kycVerdict).toMatchObject({ method: "HOOK", path: "/hooks/bridge" });
 });
 

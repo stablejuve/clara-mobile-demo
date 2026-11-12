@@ -10,6 +10,17 @@ export const SEND_FEE_BPS = 50;
 export const MIN_SEND_MXN_CENTS = 50_00;
 /** Vigencia de una cotización. */
 export const QUOTE_TTL_MS = 60_000;
+/** Cada cuánto cambia el tipo de cambio de la demo (Bridge lo actualiza ~30 s; la demo más seguido para que se note). */
+export const RATE_STEP_MS = 15_000;
+
+/** Tipo de cambio en vivo de la demo: oscila alrededor de 17.25 en escalones de RATE_STEP_MS. Determinista por tiempo. */
+export function liveRate(now: number): number {
+  const k = Math.floor(now / RATE_STEP_MS);
+  const r = DEMO_RATE + 0.08 * Math.sin(k * 0.9) + 0.035 * Math.sin(k * 2.3);
+  return Math.round(r * 10_000) / 10_000;
+}
+/** Desde cuándo rige el tipo de cambio actual. */
+export const rateUpdatedAt = (now: number): number => Math.floor(now / RATE_STEP_MS) * RATE_STEP_MS;
 
 const roundHalfUp = (n: number): number => Math.floor(n + 0.5);
 export const usdcToMxnCents = (usdcCents: number, rate = DEMO_RATE): number => roundHalfUp(usdcCents * rate);
@@ -25,7 +36,7 @@ export function formatCents(cents: number): string {
 }
 export const formatUsdc = (cents: number): string => `${formatCents(cents)} USDC`;
 export const formatMxn = (cents: number): string => `$${formatCents(cents)} MXN`;
-export const formatRate = (rate: number): string => `1 USDC = $${rate.toFixed(2)} MXN`;
+export const formatRate = (rate: number): string => `1 USD = $${rate.toFixed(4)} MXN`;
 
 /** "1,250.5" | "1250" | "0.05" → centavos; null si no es un monto (comas = miles; punto = decimal; máx. 2 decimales). */
 export function parseAmount(input: string): number | null {

@@ -249,7 +249,7 @@ function PasskeyPage({ ctx, auth }: { ctx: AppCtx; auth: (label: string, reason:
       <T w={400} s={17} lh={1.35} color={c.ink55} style={{ paddingTop: 8, textAlign: "center" }}>{done ? t("rc.wallet.readySub") : t("rc.wallet.sub")}</T>
       <Animated.View style={{ marginTop: 24, opacity: addr, transform: [{ translateY: addr.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }}>
         <View style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: RADIUS.pill, backgroundColor: c.ink08 }}>
-          <T w={500} s={13} mono color={c.ink72}>{shortAddress(state.wallet.address)} · Base</T>
+          <T w={500} s={13} mono color={c.ink72}>{shortAddress(state.wallet.address)}</T>
         </View>
       </Animated.View>
       {error ? <T w={400} s={14} lh={1.4} color={c.error} style={{ textAlign: "center", paddingTop: 16 }}>{error}</T> : null}
