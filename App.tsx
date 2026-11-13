@@ -16,7 +16,7 @@ import { parseDeepLink } from "./src/navigation/deepLink";
 import { navigateTo } from "./src/navigation/ref";
 import { isScreen, isSheet } from "./src/navigation/screens";
 import { Navigator } from "./src/navigation/Navigator";
-import { EMPTY_DRAFT, fillSample, KYC_SECTIONS, type KycDraft, toSubmission } from "./src/relayer/kyc";
+import { EMPTY_DRAFT, fillSample, KYC_SECTIONS, type KycDraft, type KycSection, toSubmission } from "./src/relayer/kyc";
 import { EMPLOYER } from "./src/relayer/mock/fixtures";
 import { createMockApi } from "./src/relayer/mock/mockApi";
 import { tracer, withTrace } from "./src/relayer/trace";
@@ -60,6 +60,8 @@ function Shell() {
   const { scheme } = useTheme();
   const scr = useCurrentScreen();
   const [draft, setDraft] = useState<KycDraft>(EMPTY_DRAFT);
+  const [savedAt, setSavedAt] = useState<Partial<Record<KycSection, number>>>({});
+  const markSaved = useCallback((s: KycSection) => setSavedAt((m) => ({ ...m, [s]: Date.now() })), []);
   const [banner, setBanner] = useState<BannerContent | null>(null);
   useTraceBoot();
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,7 +88,7 @@ function Shell() {
     const sub = Linking.addEventListener("url", (e) => handle(e.url));
     return () => sub.remove();
   }, []);
-  const ctx: AppCtx = { ...store, module, faceId, notifications, kyc: { draft, setDraft }, openBalance };
+  const ctx: AppCtx = { ...store, module, faceId, notifications, kyc: { draft, setDraft, savedAt, markSaved }, openBalance };
   return (
     <View style={{ flex: 1 }}>
       <StatusBar barStyle={scheme === "dark" ? "light-content" : "dark-content"} />

@@ -201,3 +201,12 @@ test("submitKyc: el expediente capturado en la app pasa a revisión y, tras un r
   expect((await api.getModule()).kyc.status).toBe("approved");
   expect((await api.getEvents()).map((e) => [e.type, e.payload.end_user])).toEqual([["kyc.rejected", "ana.torres@acme.example"], ["kyc.approved", "ana.torres@acme.example"]]);
 });
+
+test("kyc_rejected: el primer envío se rechaza; al corregir y reenviar, se aprueba", async () => {
+  const { api, flush } = harness("kyc_rejected");
+  await api.acceptTerms();
+  await api.submitKyc(toSubmission(KYC_SECTIONS.reduce(fillSample, EMPTY_DRAFT))); flush();
+  expect((await api.getModule()).kyc.status).toBe("rejected");
+  await api.submitKyc(toSubmission(KYC_SECTIONS.reduce(fillSample, EMPTY_DRAFT))); flush();
+  expect((await api.getModule()).kyc.status).toBe("approved");
+});

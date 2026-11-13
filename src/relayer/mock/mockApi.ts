@@ -63,12 +63,16 @@ export function createMockApi(opts: MockOptions): MockApi {
 
   let kycSubmission: KycSubmission | null = null;
   /** incomplete → under_review y el veredicto de Bridge en segundo plano. */
+  let kycAttempts = 0;
   const toReview = (): ModuleState => {
+    kycAttempts++;
     const s = apply(M.completeKycReturn(state));
     later(() => {
       const r = rules();
-      if (applySafe(M.resolveKyc(state, r.kycOutcome, now() - r.kycApprovedAgoMs, r.kycRejectionReasons))) {
-        event(r.kycOutcome === "approved" ? "kyc.approved" : "kyc.rejected", { status: r.kycOutcome, end_user: kycSubmission?.email ?? DEMO_USER.email });
+      // Escenario de rechazo: sólo el primer envío se rechaza; al corregir y reenviar, Bridge aprueba.
+      const outcome = r.kycOutcome === "rejected" && kycAttempts > 1 ? "approved" : r.kycOutcome;
+      if (applySafe(M.resolveKyc(state, outcome, now() - r.kycApprovedAgoMs, outcome === "rejected" ? r.kycRejectionReasons : []))) {
+        event(outcome === "approved" ? "kyc.approved" : "kyc.rejected", { status: outcome, end_user: kycSubmission?.email ?? DEMO_USER.email });
         trace("kycVerdict");
         emit();
       }
@@ -283,6 +287,6 @@ export function createMockApi(opts: MockOptions): MockApi {
     async setScenario(s) { await ready; scenario = s; await saveScenario(opts.storage, s); emit(); },
     simulateEmployerDeposit,
     simulateCardPurchase,
-    async reset() { kycSubmission = null; state = M.INITIAL_STATE; movements = []; events = []; receipts.clear(); quotes.clear(); seq = 0; purchaseSeq = 0; emit(); },
+    async reset() { kycSubmission = null; kycAttempts = 0; state = M.INITIAL_STATE; movements = []; events = []; receipts.clear(); quotes.clear(); seq = 0; purchaseSeq = 0; emit(); },
   };
 }

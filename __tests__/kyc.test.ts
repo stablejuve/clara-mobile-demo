@@ -41,3 +41,10 @@ test("toSubmission arma el cuerpo con forma de Bridge: ID con fotos + RFC aparte
   expect(body.identifying_information[0].image_front).toBeTruthy();
   expect(body.account_purpose).toBe("receive_salary");
 });
+
+test("rechazo: cada razón apunta a la sección que hay que rehacer", () => {
+  const { sectionsToFix, reasonsFor } = require("../src/relayer/kyc");
+  expect(sectionsToFix(["address_mismatch", "id_document_unreadable"])).toEqual(["address", "id"]);
+  expect(sectionsToFix(["selfie_mismatch", "algo_raro"])).toEqual(["personal", "selfie"]);
+  expect(reasonsFor(["id_document_unreadable", "address_mismatch"], "id")).toEqual(["id_document_unreadable"]);
+});

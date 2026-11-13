@@ -34,7 +34,7 @@ export function KycFormSheet(ctx: AppCtx & { params: SheetParams["kycForm"] }) {
   const [local, setLocal] = useState<KycDraft>(ctx.kyc.draft);
   const now = new Date();
   const miss = missing(local, section, now);
-  const save = () => { ctx.kyc.setDraft((d) => ({ ...d, [section]: local[section] })); ctx.back(); };
+  const save = () => { ctx.kyc.setDraft((d) => ({ ...d, [section]: local[section] })); ctx.kyc.markSaved(section); ctx.back(); };
   const fill = () => setLocal((d) => fillSample(d, section));
   return (
     <View style={{ flex: 1, backgroundColor: c.page }}>

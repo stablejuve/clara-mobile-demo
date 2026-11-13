@@ -1,15 +1,16 @@
 import { memoryKv } from "../src/storage/kv";
 import { DEFAULT_SCENARIO, loadScenario, parseScenario, rulesFor, saveScenario, SCENARIO_KEY, SCENARIOS } from "../src/relayer/mock/scenarios";
 
-test("los seis escenarios del spec; happy es el default", () => {
-  expect(SCENARIOS).toEqual(["happy", "kyc_rejected", "cards_unavailable_region", "endorsement_expired", "send_failed", "bank_verification_failed"]);
+test("los escenarios del spec más passkey_failed; happy es el default", () => {
+  expect(SCENARIOS).toEqual(["happy", "kyc_rejected", "passkey_failed", "cards_unavailable_region", "endorsement_expired", "send_failed", "bank_verification_failed"]);
   expect(DEFAULT_SCENARIO).toBe("happy");
 });
 
 test("cada escenario cambia exactamente una regla respecto a happy", () => {
   const base = rulesFor("happy");
-  expect(base).toEqual({ kycOutcome: "approved", kycRejectionReasons: [], kycApprovedAgoMs: 0, cardsAvailable: true, bankOutcome: "verified", sendOutcome: "completed" });
+  expect(base).toEqual({ kycOutcome: "approved", kycRejectionReasons: [], kycApprovedAgoMs: 0, cardsAvailable: true, bankOutcome: "verified", sendOutcome: "completed", passkeyFailsFirst: false });
   expect(rulesFor("kyc_rejected")).toEqual({ ...base, kycOutcome: "rejected", kycRejectionReasons: ["id_document_unreadable", "address_mismatch"] });
+  expect(rulesFor("passkey_failed")).toEqual({ ...base, passkeyFailsFirst: true });
   expect(rulesFor("cards_unavailable_region")).toEqual({ ...base, cardsAvailable: false });
   expect(rulesFor("endorsement_expired")).toEqual({ ...base, kycApprovedAgoMs: 25 * 60 * 60 * 1000 });
   expect(rulesFor("send_failed")).toEqual({ ...base, sendOutcome: "failed" });

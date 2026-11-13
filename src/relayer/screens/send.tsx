@@ -184,12 +184,18 @@ export function SendSheet(ctx: AppCtx & { params?: SheetParams["send"] }) {
           </View>
           {/* Listo */}
           <View style={{ width, alignItems: "center", paddingTop: 100, paddingHorizontal: 28, paddingBottom: bottom }}>
-            <DrawCheck drawn={idx === 3 && status !== "failed"} color={c.success} />
+            {status === "failed" ? (
+              <View style={{ width: 88, height: 88, borderRadius: RADIUS.pill, backgroundColor: c.error + "1A", alignItems: "center", justifyContent: "center" }}>
+                <Ico name="alert" size={44} color={c.error} sw={1.8} />
+              </View>
+            ) : <DrawCheck drawn={idx === 3} color={c.success} />}
             <T w={700} s={30} lh={1.1} ls={-0.025} color={c.inkStrong} style={{ paddingTop: 28, textAlign: "center" }}>
               {status === "completed" ? t("rc.send.completed") : status === "failed" ? t("rc.send.failed") : t("rc.send.submitted")}
             </T>
             <T w={400} s={17} lh={1.35} color={c.ink55} style={{ paddingTop: 8, textAlign: "center" }}>
-              {receipt ? t("rc.send.doneSub", { mxn: formatCents(receipt.amountMxnCents), bank: receipt.bankName }) : ""}
+              {!receipt ? "" : status === "failed"
+                ? t("rc.send.returnedSub", { bank: receipt.bankName, usdc: formatCents(receipt.amountUsdcCents) })
+                : t("rc.send.doneSub", { mxn: formatCents(receipt.amountMxnCents), bank: receipt.bankName })}
             </T>
             <View style={{ marginTop: 24, height: 34, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 8, borderRadius: RADIUS.pill, backgroundColor: c.ink08 }}>
               {status === "pending" ? <Spinner size={14} color={c.ink72} sw={2.6} /> : null}
@@ -198,6 +204,11 @@ export function SendSheet(ctx: AppCtx & { params?: SheetParams["send"] }) {
               </T>
             </View>
             <View style={{ flex: 1 }} />
+            {status === "failed" ? (
+              <Pressable onPress={() => { setReceipt(null); setQuote(null); setInput(""); setIdx(0); }} accessibilityLabel="send-retry-account" style={{ paddingVertical: 14 }}>
+                <T w={500} s={16} color={c.brand}>{t("rc.send.tryOther")}</T>
+              </Pressable>
+            ) : null}
             <PrimaryButton label={t("common.ready")} onPress={ctx.back} style={{ alignSelf: "stretch" }} accessibilityLabel="send-done" />
           </View>
         </Animated.View>

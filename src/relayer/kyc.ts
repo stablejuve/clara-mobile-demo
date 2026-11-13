@@ -133,3 +133,18 @@ export function toSubmission(d: KycDraft): KycSubmission {
     expected_monthly_payments_usd: u.monthlyPayments, source_of_funds: u.sourceOfFunds, acting_as_intermediary: u.intermediary,
   };
 }
+
+/** Razón de rechazo de Bridge → sección del expediente que hay que rehacer. Las que no mapean se piden en «Datos personales». */
+export const REJECTION_SECTION: Record<string, KycSection> = {
+  id_document_unreadable: "id", id_document_expired: "id", id_document_mismatch: "id",
+  address_mismatch: "address", proof_of_address_missing: "address",
+  selfie_mismatch: "selfie", liveness_failed: "selfie",
+  name_mismatch: "personal", date_of_birth_mismatch: "personal",
+};
+/** Secciones a corregir, en el orden del expediente. */
+export function sectionsToFix(reasons: readonly string[]): KycSection[] {
+  const set = new Set(reasons.map((r) => REJECTION_SECTION[r] ?? "personal"));
+  return KYC_SECTIONS.filter((s) => set.has(s));
+}
+/** Razones que tocan una sección. */
+export const reasonsFor = (reasons: readonly string[], s: KycSection) => reasons.filter((r) => (REJECTION_SECTION[r] ?? "personal") === s);

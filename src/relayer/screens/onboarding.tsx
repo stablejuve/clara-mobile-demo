@@ -5,12 +5,13 @@ import type { AppCtx } from "../../ctx";
 import { useAction } from "../../hooks/useAction";
 import { reasonCopy, t } from "../../i18n/es";
 import { useFaceIdHud } from "../../ui/FaceIdHud";
+import { rulesFor } from "../mock/scenarios";
 import { CloseButton, DrawCheck, EASE_IOS, Grabber, Group, Hairline, Ico, type IcoName, Isotype, PoweredLabel, PrimaryButton, Spinner, Toggle } from "../../ui/kit";
 import { T } from "../../ui/primitives";
 import { RADIUS } from "../../ui/theme";
 import { useTheme } from "../../ui/ThemeProvider";
 import { shortAddress } from "../format";
-import { draftDone, KYC_SECTIONS, type KycDraft, type KycSection, sectionDone, toSubmission } from "../kyc";
+import { draftDone, KYC_SECTIONS, type KycDraft, type KycSection, sectionDone, toSubmission, reasonsFor, sectionsToFix } from "../kyc";
 import { onboardingPage } from "../state";
 import { kycRowSummary } from "./kycForm";
 
@@ -153,21 +154,38 @@ function KycPage({ ctx, next }: { ctx: AppCtx; next: () => void }) {
   const k = state.kyc.status;
   const phase: KycPhase = k === "under_review" ? "review" : k === "approved" ? "ok" : k === "rejected" ? "rejected" : "edit";
   const editable = phase === "edit" || phase === "rejected";
-  const complete = draftDone(draft, now);
+  // Rechazo: cada razón de Bridge apunta a una sección; hay que volver a guardarla antes de reenviar.
+  const rejectedAt = useRef<number | null>(null);
+  if (phase === "rejected" && rejectedAt.current === null) rejectedAt.current = Date.now();
+  if (phase !== "rejected") rejectedAt.current = null;
+  const toFix = phase === "rejected" ? sectionsToFix(state.kyc.rejectionReasons) : [];
+  const fixed = (s: KycSection) => (ctx.kyc.savedAt[s] ?? 0) > (rejectedAt.current ?? Infinity);
+  const pending = toFix.filter((s) => !fixed(s));
+  const complete = draftDone(draft, now) && pending.length === 0;
   const submit = async () => { await run(() => api.submitKyc(toSubmission(draft))); };
   const action = () => {
     if (phase === "ok") next();
     else if (editable && complete) void submit();
   };
-  const noteColor = phase === "ok" ? c.success : phase === "rejected" ? c.error : c.ink55;
+  const noteColor = phase === "ok" || (phase === "rejected" && pending.length === 0) ? c.success : phase === "rejected" ? c.error : c.ink55;
   const btn = phase === "ok" ? t("common.continue") : phase === "review" || busy ? t("rc.verifying") : phase === "rejected" ? t("rc.kyc.resend") : t("rc.kyc.send");
   return (
     <View style={{ flex: 1, paddingBottom: bottom }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 40, paddingHorizontal: 20, paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
-        <PageTitle title={t("rc.kyc.title")} sub={t("rc.kyc.sub")} />
-        <Group style={{ marginTop: 32 }}>
+        <PageTitle title={phase === "rejected" ? t("rc.kyc.rejectedTitle") : t("rc.kyc.title")} sub={phase === "rejected" ? t("rc.kyc.rejectedSub") : t("rc.kyc.sub")} />
+        {phase === "rejected" ? (
+          <View accessibilityLabel="kyc-rejected-banner" style={{ marginTop: 22, flexDirection: "row", gap: 12, padding: 14, borderRadius: RADIUS.card, backgroundColor: (pending.length > 0 ? c.error : c.success) + "1A" }}>
+            <Ico name={pending.length > 0 ? "alert" : "check"} size={20} color={pending.length > 0 ? c.error : c.success} sw={2.2} />
+            <View style={{ flex: 1, gap: 3 }}>
+              <T w={600} s={15} color={c.inkStrong}>{pending.length > 0 ? t("rc.kyc.fixCount", { n: pending.length }) : t("rc.kyc.fixedAll")}</T>
+              <T w={400} s={13.5} lh={1.4} color={c.ink72}>{pending.length > 0 ? t("rc.kyc.fixHow") : t("rc.kyc.fixedHow")}</T>
+            </View>
+          </View>
+        ) : null}
+        <Group style={{ marginTop: phase === "rejected" ? 16 : 32 }}>
           {KYC_SECTIONS.map((s) => (
             <KycRow key={s} section={s} draft={draft} done={phase === "review" || phase === "ok" || sectionDone(draft, s, now)} editable={editable}
+              flag={toFix.includes(s) ? (fixed(s) ? "fixed" : reasonsFor(state.kyc.rejectionReasons, s)) : null}
               onPress={() => ctx.nav("kycForm", { section: s })} />
           ))}
         </Group>
@@ -176,15 +194,12 @@ function KycPage({ ctx, next }: { ctx: AppCtx; next: () => void }) {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               {phase === "review" ? <Spinner size={16} color={noteColor} /> : null}
               {phase === "ok" ? <Ico name="check" size={16} color={noteColor} sw={2.6} /> : null}
-              {phase === "rejected" ? <Ico name="alert" size={16} color={noteColor} sw={2.2} /> : null}
-              <T w={500} s={15} color={noteColor}>{phase === "ok" ? t("rc.kyc.approved") : phase === "rejected" ? t("rc.kyc.rejected") : t("rc.kyc.review")}</T>
+              {phase === "rejected" ? <Ico name={pending.length > 0 ? "alert" : "check"} size={16} color={noteColor} sw={2.2} /> : null}
+              <T w={500} s={15} color={noteColor}>{phase === "ok" ? t("rc.kyc.approved") : phase === "rejected" ? (pending.length > 0 ? t("rc.kyc.pendingFix", { sections: pending.map((s) => t(`kyc2.section.${s}`)).join(", ") }) : t("rc.kyc.readyResend")) : t("rc.kyc.review")}</T>
             </View>
           ) : !complete ? (
             <T w={400} s={14} lh={1.4} color={c.ink55} style={{ textAlign: "center" }}>{t("rc.kyc.hint")}</T>
           ) : null}
-          {phase === "rejected" ? state.kyc.rejectionReasons.map((r) => (
-            <T key={r} w={400} s={13} lh={1.4} color={c.ink55} style={{ textAlign: "center", paddingHorizontal: 8 }}>{reasonCopy(r)}</T>
-          )) : null}
           {error ? <T w={400} s={14} lh={1.4} color={c.error} style={{ textAlign: "center" }}>{error}</T> : null}
         </View>
       </ScrollView>
@@ -195,26 +210,31 @@ function KycPage({ ctx, next }: { ctx: AppCtx; next: () => void }) {
   );
 }
 
-function KycRow({ section, draft, done, editable, onPress }: { section: KycSection; draft: KycDraft; done: boolean; editable: boolean; onPress: () => void }) {
+function KycRow({ section, draft, done, editable, flag, onPress }: { section: KycSection; draft: KycDraft; done: boolean; editable: boolean; flag: readonly string[] | "fixed" | null; onPress: () => void }) {
   const { c } = useTheme();
-  const summary = kycRowSummary(draft, section, done);
+  const bad = Array.isArray(flag);
+  const summary = bad ? (flag as readonly string[]).map((r) => reasonCopy(r)).join(" ") : flag === "fixed" ? t("rc.kyc.fixed") : kycRowSummary(draft, section, done);
   return (
     <Pressable onPress={editable ? onPress : undefined} accessibilityLabel={`kyc-row-${section}`}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 13, paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: c.ink08, backgroundColor: pressed && editable ? c.ink04 : "transparent" })}>
-      <View style={{ width: 26, height: 26, borderRadius: RADIUS.pill, alignItems: "center", justifyContent: "center", backgroundColor: done ? c.brand : c.ink08 }}>
-        {done ? <Ico name="check" size={14} color={c.onBrand} sw={3} /> : null}
+      <View style={{ width: 26, height: 26, borderRadius: RADIUS.pill, alignItems: "center", justifyContent: "center", backgroundColor: bad ? c.error : done ? c.brand : c.ink08 }}>
+        {bad ? <T w={700} s={14} color="#FFFFFF">!</T> : done ? <Ico name="check" size={14} color={c.onBrand} sw={3} /> : null}
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <T w={500} s={16} color={done ? c.inkStrong : c.ink72}>{t(`kyc2.section.${section}`)}</T>
-        <T w={400} s={13} color={c.ink55} numberOfLines={1}>{summary}</T>
+        <T w={500} s={16} color={done || bad ? c.inkStrong : c.ink72}>{t(`kyc2.section.${section}`)}</T>
+        <T w={400} s={13} lh={1.35} color={bad ? c.error : flag === "fixed" ? c.success : c.ink55} numberOfLines={bad ? 3 : 1}>{summary}</T>
       </View>
-      {editable ? <Ico name="chevronRight" size={18} color={c.ink25} sw={2} /> : null}
+      {bad && editable ? (
+        <View style={{ paddingHorizontal: 10, height: 26, borderRadius: RADIUS.pill, backgroundColor: c.error, justifyContent: "center" }}>
+          <T w={600} s={12.5} color="#FFFFFF">{t("rc.kyc.fixCta")}</T>
+        </View>
+      ) : editable ? <Ico name="chevronRight" size={18} color={c.ink25} sw={2} /> : null}
     </Pressable>
   );
 }
 
 // ── 4 · Passkey ─────────────────────────────────────────────────────────────
-function PasskeyPage({ ctx, auth }: { ctx: AppCtx; auth: (label: string, reason: string) => Promise<boolean> }) {
+function PasskeyPage({ ctx, auth }: { ctx: AppCtx; auth: (label: string, reason: string, opts?: { fail?: boolean }) => Promise<boolean> }) {
   const { c } = useTheme();
   const bottom = useBottom();
   const { state, api } = ctx.module;
@@ -228,8 +248,14 @@ function PasskeyPage({ ctx, auth }: { ctx: AppCtx; auth: (label: string, reason:
       Animated.timing(addr, { toValue: done ? 1 : 0, duration: 500, delay: done ? 500 : 0, easing: EASE_IOS, useNativeDriver: true }),
     ]).start();
   }, [done, faceO, addr]);
+  // Non-happy path: Face ID no reconoce (escenario de demo en el primer intento, o el Face ID real que falla).
+  const [attempts, setAttempts] = useState(0);
+  const [failed, setFailed] = useState(false);
   const create = async () => {
-    if (!(await auth(t("common.ready"), t("rc.wallet.reason")))) return;
+    const fail = attempts === 0 && rulesFor(api.getScenario()).passkeyFailsFirst;
+    setAttempts((n) => n + 1);
+    if (!(await auth(t("common.ready"), t("rc.wallet.reason"), { fail }))) { setFailed(true); return; }
+    setFailed(false);
     await run(() => api.createPasskey());
   };
   const finish = () => {
@@ -253,8 +279,23 @@ function PasskeyPage({ ctx, auth }: { ctx: AppCtx; auth: (label: string, reason:
         </View>
       </Animated.View>
       {error ? <T w={400} s={14} lh={1.4} color={c.error} style={{ textAlign: "center", paddingTop: 16 }}>{error}</T> : null}
+      {failed && !done ? (
+        <View accessibilityLabel="passkey-failed" style={{ marginTop: 24, alignSelf: "stretch", gap: 8, padding: 16, borderRadius: RADIUS.card, backgroundColor: c.error + "1A" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ico name="alert" size={18} color={c.error} sw={2.2} />
+            <T w={600} s={16} color={c.inkStrong}>{t("rc.wallet.failTitle")}</T>
+          </View>
+          <T w={400} s={14} lh={1.4} color={c.ink72}>{t("rc.wallet.failBody")}</T>
+          {(["rc.wallet.failTip1", "rc.wallet.failTip2", "rc.wallet.failTip3"] as const).map((k) => (
+            <View key={k} style={{ flexDirection: "row", gap: 8, paddingLeft: 2 }}>
+              <T w={600} s={14} color={c.ink55}>·</T>
+              <T w={400} s={14} lh={1.4} color={c.ink72} style={{ flex: 1 }}>{t(k)}</T>
+            </View>
+          ))}
+        </View>
+      ) : null}
       <View style={{ flex: 1 }} />
-      <PrimaryButton label={done ? t("common.ready") : busy ? t("rc.wallet.creating") : t("rc.wallet.btn")} icon={done ? undefined : "faceId"} dim={busy}
+      <PrimaryButton label={done ? t("common.ready") : busy ? t("rc.wallet.creating") : failed ? t("rc.wallet.retry") : t("rc.wallet.btn")} icon={done ? undefined : "faceId"} dim={busy}
         onPress={() => { if (done) finish(); else void create(); }} style={{ alignSelf: "stretch" }} accessibilityLabel="passkey-action" />
     </View>
   );

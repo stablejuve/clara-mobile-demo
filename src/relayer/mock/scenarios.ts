@@ -1,8 +1,8 @@
 import type { KeyValueStorage } from "../../storage/kv";
 
 // Escenarios conmutables desde el panel de demo (spec «Capa mock»). Cada uno cambia una regla del mock; persisten en AsyncStorage.
-export type Scenario = "happy" | "kyc_rejected" | "cards_unavailable_region" | "endorsement_expired" | "send_failed" | "bank_verification_failed";
-export const SCENARIOS: readonly Scenario[] = ["happy", "kyc_rejected", "cards_unavailable_region", "endorsement_expired", "send_failed", "bank_verification_failed"];
+export type Scenario = "happy" | "kyc_rejected" | "passkey_failed" | "cards_unavailable_region" | "endorsement_expired" | "send_failed" | "bank_verification_failed";
+export const SCENARIOS: readonly Scenario[] = ["happy", "kyc_rejected", "passkey_failed", "cards_unavailable_region", "endorsement_expired", "send_failed", "bank_verification_failed"];
 export const DEFAULT_SCENARIO: Scenario = "happy";
 export const SCENARIO_KEY = "relayer.scenario.v1";
 
@@ -14,13 +14,16 @@ export type ScenarioRules = {
   cardsAvailable: boolean;
   bankOutcome: "verified" | "failed";
   sendOutcome: "completed" | "failed";
+  /** passkey_failed: el primer Face ID al crear la passkey no reconoce al usuario. */
+  passkeyFailsFirst: boolean;
 };
 
 export function rulesFor(s: Scenario): ScenarioRules {
-  const base: ScenarioRules = { kycOutcome: "approved", kycRejectionReasons: [], kycApprovedAgoMs: 0, cardsAvailable: true, bankOutcome: "verified", sendOutcome: "completed" };
+  const base: ScenarioRules = { kycOutcome: "approved", kycRejectionReasons: [], kycApprovedAgoMs: 0, cardsAvailable: true, bankOutcome: "verified", sendOutcome: "completed", passkeyFailsFirst: false };
   switch (s) {
     case "happy": return base;
     case "kyc_rejected": return { ...base, kycOutcome: "rejected", kycRejectionReasons: ["id_document_unreadable", "address_mismatch"] };
+    case "passkey_failed": return { ...base, passkeyFailsFirst: true };
     case "cards_unavailable_region": return { ...base, cardsAvailable: false };
     case "endorsement_expired": return { ...base, kycApprovedAgoMs: 25 * 60 * 60 * 1000 };
     case "send_failed": return { ...base, sendOutcome: "failed" };

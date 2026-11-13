@@ -41,7 +41,7 @@ test("cada sección y cada campo del KYC tiene copy", () => {
 });
 
 test("reasonCopy traduce las razones conocidas y devuelve el código si no la conoce", () => {
-  expect(reasonCopy("id_document_unreadable")).toBe("La identificación no se pudo leer. Toma la foto sin reflejos y con las cuatro esquinas visibles.");
+  expect(reasonCopy("id_document_unreadable")).toBe("Tu INE salió borrosa o con reflejo. Vuelve a tomar frente y reverso con las cuatro esquinas visibles.");
   expect(reasonCopy("something_else")).toBe("something_else");
 });
 
