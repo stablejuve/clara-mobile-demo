@@ -46,16 +46,13 @@ subir `ios.buildNumber` en `app.config.ts` antes de cada subida).
 
 ## Capturas
 
-Simulador iPhone 17 Pro, capa mock. Se regeneran con los deep links de desarrollo (`relayermobiledemo://demo/open/<pantalla>` y `…/demo/seed/active`).
+Flujo actual: Global Dollar Benefits (el código de este flujo todavía no está en esta rama). Están en `docs/screenshots/v2/` (teléfono, numeradas en el orden del guion) y en
+`docs/screenshots/v2/web/` (back office de la empresa junto al teléfono).
 
-| Inicio | Beneficios | Perfil | Alta |
-|---|---|---|---|
-| <img src="docs/screenshots/01-inicio.png" width="200"> | <img src="docs/screenshots/02-beneficios.png" width="200"> | <img src="docs/screenshots/03-perfil.png" width="200"> | <img src="docs/screenshots/04-alta.png" width="200"> |
-
-| Inicio (módulo activo) | Saldo | Tarjeta | Transferir |
-|---|---|---|---|
-| <img src="docs/screenshots/05-inicio-activo.png" width="200"> | <img src="docs/screenshots/06-saldo.png" width="200"> | <img src="docs/screenshots/07-tarjeta.png" width="200"> | <img src="docs/screenshots/08-transferir.png" width="200"> |
-
-| Modo explicativo | Panel de demo |
+| Recursos Humanos en Betterfly | Finanzas en Clara |
 |---|---|
-| <img src="docs/screenshots/09-modo-explicativo.png" width="200"> | <img src="docs/screenshots/10-panel-demo.png" width="200"> |
+| <img src="docs/screenshots/v2/web/04-people-benefit-sent.png" width="420"> | <img src="docs/screenshots/v2/web/05-finance-clara-sent.png" width="420"> |
+
+| Invitación | Cuenta USD | Tarjeta | Cotización |
+|---|---|---|---|
+| <img src="docs/screenshots/v2/01-home-invitation.png" width="200"> | <img src="docs/screenshots/v2/11-account-reserved.png" width="200"> | <img src="docs/screenshots/v2/08-card-active.png" width="200"> | <img src="docs/screenshots/v2/14-fx-quote.png" width="200"> |
