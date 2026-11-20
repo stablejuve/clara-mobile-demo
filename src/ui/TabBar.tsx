@@ -1,8 +1,9 @@
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { BlurView } from "expo-blur";
 import { Pressable, View } from "react-native";
-import { type Key, t } from "../i18n/es";
-import { useAppCtx } from "../navigation/context";
+import { type Key, tr } from "../gdb/copy";
+import { useGdb } from "../gdb/store";
+import { switchTab } from "../navigation/ref";
 import { type TabName, TAB_ORDER, TAB_ROOT } from "../navigation/routes";
 import type { HostScreen } from "../navigation/screens";
 import { Ico, type IcoName } from "./kit";
@@ -16,7 +17,7 @@ export const TABS: Record<HostScreen, [Key, IcoName]> = { home: ["tab.home", "ho
 /** Tab bar iOS del diseño: translúcida, hairline arriba, icono 25 + etiqueta 10/500; activa en marca, inactiva ink-40. Siempre visible. */
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const { c, scheme } = useTheme();
-  const { switchTab } = useAppCtx();
+  useGdb(); // se repinta al cambiar el idioma
   const focusedTab = state.routes[state.index];
   const select = (name: TabName) => {
     const route = state.routes.find((r) => r.name === name)!;
@@ -37,7 +38,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
             <Pressable key={name} onPress={() => select(name)} accessibilityLabel={`tab-${root}`} accessibilityRole="tab"
               style={{ flex: 1, height: TAB_ROW_H, alignItems: "center", justifyContent: "center", gap: 3 }}>
               <Ico name={icon} size={25} color={fg} sw={1.8} />
-              <T w={500} s={10} color={fg}>{t(labelKey)}</T>
+              <T w={500} s={10} color={fg}>{tr(labelKey)}</T>
             </Pressable>
           );
         })}

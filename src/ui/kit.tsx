@@ -1,9 +1,9 @@
 import { type ReactNode, useCallback, useEffect, useRef } from "react";
-import { Animated, Easing, Pressable, type StyleProp, View, type ViewStyle } from "react-native";
+import { Animated, Easing, Image, Pressable, type StyleProp, View, type ViewStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
-import { t } from "../i18n/es";
+import { BF_COIN, BF_TEXT, BF_VIEW } from "./betterfly";
 import { T } from "./primitives";
-import { RADIUS, RL } from "./theme";
+import { RADIUS } from "./theme";
 import { useTheme } from "./ThemeProvider";
 
 // Kit del diseño «Recibo Minimal»: los SVG son los trazos exactos del archivo de diseño (lucide, viewBox 24).
@@ -38,6 +38,7 @@ const ICON_PATHS = {
   shield: ["M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"],
   activity: ["M22 12h-4l-3 9L9 3l-3 9H2"],
   close: ["M18 6 6 18", "m6 6 12 12"],
+  search: ["m21 21-4.34-4.34", "M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0"],
   swap: ["m16 3 4 4-4 4", "M20 7H4", "m8 21-4-4 4-4", "M4 17h16"],
   camera: ["M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z", "M9 13a3 3 0 1 0 6 0a3 3 0 1 0-6 0"],
   sparkles: ["M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.14 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z", "M20 3v4", "M22 5h-4"],
@@ -57,15 +58,21 @@ export function Ico({ name, size = 20, color, sw = 2, style }: { name: IcoName; 
   );
 }
 
-/** Isotipo de Relayer (assets/relayer-isotype-white.svg del diseño), 500×638. */
-export const ISOTYPE = "M239.602 303.849C239.831 389.43 238.615 475.081 239.355 560.68C239.426 568.252 240.712 577.057 240.395 584.699C239.972 595.054 235.796 595.775 227.55 599.72C206.002 610.021 182.321 620.112 160.262 629.497C155.24 631.628 141.532 638.531 137.11 637.967C135.048 637.703 131.56 635.132 129.516 633.952C103.668 619.037 77.1864 600.09 51.885 583.783C46.5287 580.332 37.3137 577.726 36.5737 571.228C34.8999 556.753 36.3975 534.583 36.5561 519.281C37.9128 382.034 39.4457 244.593 39.5338 107.153L1.26448 46.4357C-0.462219 42.861 -0.72651 38.4411 2.42736 35.606L91.8281 0L96.0039 0.739591L498.378 206.68C500.844 209.744 499.77 214.798 499.752 218.514L479.578 321.317C477.816 324.258 471.032 327.234 467.843 328.801C446.912 339.049 424.359 346.428 403.321 356.536L398.723 357.275C355.608 335.704 313.744 311.526 271.422 288.423L239.602 303.849ZM483.542 215.256L93.2905 14.8975H90.4186L26.0021 40.4486L27.2355 42.5969L409.523 251.373L414.051 251.056L483.525 215.274L483.542 215.256ZM53.876 74.0647V153.324L390.917 338.134L393.014 336.655L403.832 266.675L403.268 264.28L63.179 77.7275L53.876 74.0471V74.0647ZM132.687 618.756L138.079 216.665L53.876 170.123C51.885 220.468 53.2945 271.025 52.9597 321.475C52.9421 324.222 51.9378 326.582 51.9202 329.083C51.374 407.884 51.515 486.651 50.9864 565.452L51.9554 567.354L132.687 618.756ZM255.724 279.653L152.879 223.92L150.959 329.593L255.724 279.653Z";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const BF_MARK = require("../../assets/betterfly-mark.png");
 
-/** Cuadro petróleo con el isotipo blanco (tarjeta de Beneficios, intro del alta, banner). `object-fit: contain` en un cuadro `glyph`. */
-export function Isotype({ box, glyph, radius = RADIUS.card }: { box: number; glyph: number; radius?: number }) {
+/** Isotipo de Betterfly: el icono de su app (mariposa sobre verde oscuro), recortado al radio pedido. `glyph` se conserva por compatibilidad. */
+export function Isotype({ box, radius = RADIUS.card }: { box: number; glyph?: number; radius?: number }) {
+  return <Image source={BF_MARK} accessibilityLabel="Betterfly" style={{ width: box, height: box, borderRadius: radius }} />;
+}
+
+/** Wordmark oficial de Betterfly (texto + moneda «BB»), a la altura dada y de un solo color. */
+export function Wordmark({ height, color }: { height: number; color: string }) {
   return (
-    <View style={{ width: box, height: box, borderRadius: radius, backgroundColor: RL.petrol, alignItems: "center", justifyContent: "center" }}>
-      <Svg width={glyph * (500 / 638)} height={glyph} viewBox="0 0 500 638"><Path d={ISOTYPE} fill="#FFFFFF" /></Svg>
-    </View>
+    <Svg width={height * (BF_VIEW.w / BF_VIEW.h)} height={height} viewBox={`0 0 ${BF_VIEW.w} ${BF_VIEW.h}`} accessibilityLabel="Betterfly">
+      <Path d={BF_TEXT} fill={color} />
+      {BF_COIN.map((d) => <Path key={d} d={d} fill={color} />)}
+    </Svg>
   );
 }
 
@@ -146,16 +153,10 @@ export function Eyebrow({ children, color, style }: { children: string; color?: 
   return <View style={style}><T w={500} s={10.5} ls={0.08} mono color={color ?? c.ink55}>{children.toUpperCase()}</T></View>;
 }
 
-/** «powered by Relayer»: mono 9.5, tracking .1em, ink-25. */
-export function PoweredLabel() {
-  const { c } = useTheme();
-  return <T w={500} s={9.5} ls={0.1} mono color={c.ink25} style={{ textAlign: "center" }}>{t("common.poweredBy").toUpperCase()}</T>;
-}
-
 /** Grupo inset: tarjeta blanca radio 6 con filas; `Hairline` entre filas (0.5 px, ink-15, con sangría). */
 export function Group({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const { c } = useTheme();
-  return <View style={[{ borderRadius: RADIUS.card, backgroundColor: c.card, overflow: "hidden" }, style]}>{children}</View>;
+  return <View style={[{ borderRadius: RADIUS.card, backgroundColor: c.card, overflow: "hidden" }, cardEdge(c), style]}>{children}</View>;
 }
 export function Hairline({ inset = 16, color }: { inset?: number; color?: string }) {
   const { c } = useTheme();
@@ -247,8 +248,13 @@ export function useShake(): [Animated.Value, () => void] {
 }
 
 /** `--shadow-card`: 0 1px 0 (casi invisible en Paper; más marcada en Ash). */
+/** Filo de las tarjetas: sobre el panel blanco se distinguen por un borde muy tenue, como en la app de Betterfly. */
+export function cardEdge(c: { ink15: string }): ViewStyle {
+  return { borderWidth: 1, borderColor: c.ink15 };
+}
+
 export function cardShadow(scheme: "light" | "dark"): ViewStyle {
-  return { shadowColor: scheme === "dark" ? "#000000" : "#0F3D34", shadowOpacity: scheme === "dark" ? 0.4 : 0.04, shadowRadius: 0, shadowOffset: { width: 0, height: 1 } };
+  return { shadowColor: scheme === "dark" ? "#000000" : "#0F1C14", shadowOpacity: scheme === "dark" ? 0.4 : 0.04, shadowRadius: 0, shadowOffset: { width: 0, height: 1 } };
 }
 
 /** Fila de lista: título 16/500 a la izquierda, valor a la derecha, icono opcional. */

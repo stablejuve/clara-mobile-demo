@@ -22,9 +22,9 @@ fi
 rm -rf build
 npx expo prebuild --platform ios --clean
 
-xcodebuild -workspace ios/AcmeBeneficios.xcworkspace -scheme AcmeBeneficios \
+xcodebuild -workspace ios/Betterfly.xcworkspace -scheme Betterfly \
   -destination 'generic/platform=iOS' \
-  -archivePath build/AcmeBeneficios.xcarchive \
+  -archivePath build/Betterfly.xcarchive \
   -allowProvisioningUpdates \
   -authenticationKeyPath "$KEY_PATH" \
   -authenticationKeyID "$ASC_KEY_ID" \
@@ -33,7 +33,7 @@ xcodebuild -workspace ios/AcmeBeneficios.xcworkspace -scheme AcmeBeneficios \
   clean archive
 
 xcodebuild -exportArchive \
-  -archivePath build/AcmeBeneficios.xcarchive \
+  -archivePath build/Betterfly.xcarchive \
   -exportOptionsPlist ExportOptions.plist \
   -exportPath build/export \
   -allowProvisioningUpdates \
@@ -41,4 +41,4 @@ xcodebuild -exportArchive \
   -authenticationKeyID "$ASC_KEY_ID" \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
-echo "✓ $DIR/build/export/AcmeBeneficios.ipa"
+echo "✓ $DIR/build/export/Betterfly.ipa"

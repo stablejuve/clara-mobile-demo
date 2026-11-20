@@ -1,19 +1,25 @@
 import { Platform, type TextStyle } from "react-native";
 
-// Tokens Relayer Wallets v4 (diseño «Recibo Minimal»: tokens.css + spacing_and_effects.css). Paper (light) y Ash (dark) con los
+// Estructura de tokens de Relayer Wallets v4 (diseño «Recibo Minimal») con los colores de la interfaz de Betterfly: crema + verde casi
+// negro en claro, verde casi negro + verde brillante en oscuro. Paper (light) y Ash (dark) con los
 // mismos nombres semánticos. Las pantallas leen `useTheme().c`; aquí viven los únicos hex de la UI.
 
 export type Scheme = "light" | "dark";
 export type ThemeOverride = Scheme | "system";
 
-/** Identidad fija, independiente del esquema (arte de tarjeta, isotipo, CTA de la anfitriona). */
-export const RL = { petrol: "#015F51", petrolDeep: "#012821", cream: "#F4EFE0", carbon: "#121819", frost: "rgba(236,230,214,0.42)" } as const;
+/** Identidad fija, independiente del esquema (arte de tarjeta, promo, CTA de la anfitriona). Valores de la app de Betterfly:
+ *  `petrol` = verde de marca legible, `petrolDeep` = verde casi negro de sus fondos, `cream` = su crema de página. */
+export const RL = { petrol: "#066C32", petrolDeep: "#0F1C14", cream: "#F7F5EB", carbon: "#0F1C14", frost: "rgba(247,245,235,0.42)" } as const;
+
+/** Acentos de la interfaz de Betterfly (muestreados de las capturas de su app en el App Store): verde brillante de las
+ *  Betterflies y el nivel, y los colores de sus etiquetas (lima «CAMINATA», rosa «UNIDO», cian «NUEVO», menta «BIENESTAR»). */
+export const BF = { green: "#19F578", greenDeep: "#042914", forest: "#0B3B1F", night: "#020F08", lime: "#E6FC13", pink: "#FFAAFF", cyan: "#7EF9E7", mint: "#C0FBDC", ink: "#0F1C14" } as const;
 
 /** Radios v4: tarjetas 6, pill para botones, switches y avatares. */
 export const RADIUS = { card: 6, control: 6, sheet: 12, pill: 9999 } as const;
 
 export type Palette = {
-  page: string; canvas: string; card: string; elev: string; input: string; sub: string;
+  page: string; /** Panel blanco de contenido sobre la cabecera crema (como en la app de Betterfly). */ sheet: string; canvas: string; card: string; elev: string; input: string; sub: string;
   inkStrong: string; inkBody: string; ink72: string; ink55: string; ink40: string; ink25: string; ink15: string; ink08: string; ink04: string;
   brand: string; brandH: string; onBrand: string;
   /** Botón principal: carbón en claro, beige de marca en oscuro. */
@@ -24,25 +30,25 @@ export type Palette = {
 };
 
 export const LIGHT: Palette = {
-  page: "#F6F6F4", canvas: "#EFEFEC", card: "#FFFFFF", elev: "#FFFFFF", input: "#FFFFFF", sub: "#ECECE8",
-  inkStrong: "#012821", inkBody: "#0F3D34",
-  ink72: "rgba(15,61,52,0.72)", ink55: "rgba(15,61,52,0.55)", ink40: "rgba(15,61,52,0.40)", ink25: "rgba(15,61,52,0.25)",
-  ink15: "rgba(15,61,52,0.12)", ink08: "rgba(15,61,52,0.07)", ink04: "rgba(15,61,52,0.04)",
-  brand: "#015F51", brandH: "#013E36", onBrand: "#F4EFE0", cta: "#121819", onCta: "#FFFFFF", live: "#00C4CC", settled: "#3DA083",
-  info: "#3D5A7B", success: "#2F8E5C", warning: "#B57100", error: "#8B2940",
-  backdrop: "rgba(15,61,52,0.32)",
-  btnPrimary: "#015F51", btnPrimaryH: "#013E36", onBtnPrimary: "#F4EFE0",
+  page: "#F7F5EB", sheet: "#FFFFFF", canvas: "#EFECDF", card: "#FFFFFF", elev: "#FFFFFF", input: "#FFFFFF", sub: "#EDEADD",
+  inkStrong: "#0F1C14", inkBody: "#1B2B21",
+  ink72: "rgba(15,28,20,0.72)", ink55: "rgba(15,28,20,0.58)", ink40: "rgba(15,28,20,0.40)", ink25: "rgba(15,28,20,0.25)",
+  ink15: "rgba(15,28,20,0.12)", ink08: "rgba(15,28,20,0.07)", ink04: "rgba(15,28,20,0.04)",
+  brand: "#066C32", brandH: "#034A22", onBrand: "#FFFFFF", cta: "#0F1C14", onCta: "#FFFFFF", live: "#19F578", settled: "#098F43",
+  info: "#3D5A7B", success: "#098F43", warning: "#A66700", error: "#8B2940",
+  backdrop: "rgba(15,28,20,0.40)",
+  btnPrimary: "#0F1C14", btnPrimaryH: "#1B2B21", onBtnPrimary: "#FFFFFF",
 };
 
 export const DARK: Palette = {
-  page: "#1A1A19", canvas: "#161614", card: "#272725", elev: "#2F2F2C", input: "#181816", sub: "#141413",
-  inkStrong: "#FFFFFF", inkBody: "#EDE7D8",
-  ink72: "rgba(237,231,216,0.72)", ink55: "rgba(237,231,216,0.55)", ink40: "rgba(237,231,216,0.40)", ink25: "rgba(237,231,216,0.25)",
-  ink15: "rgba(237,231,216,0.10)", ink08: "rgba(237,231,216,0.06)", ink04: "rgba(237,231,216,0.04)",
-  brand: "#ECE6D6", brandH: "#F4F0E8", onBrand: "#060606", cta: "#ECE6D6", onCta: "#060606", live: "#33D6DD", settled: "#66C8A8",
-  info: "#8FA8C4", success: "#66C8A8", warning: "#E8B25C", error: "#D87B92",
+  page: "#0F1C14", sheet: "#14231A", canvas: "#0B150F", card: "#1A2B20", elev: "#203327", input: "#0C1710", sub: "#0A130D",
+  inkStrong: "#FFFFFF", inkBody: "#F7F5EB",
+  ink72: "rgba(247,245,235,0.72)", ink55: "rgba(247,245,235,0.55)", ink40: "rgba(247,245,235,0.40)", ink25: "rgba(247,245,235,0.25)",
+  ink15: "rgba(247,245,235,0.10)", ink08: "rgba(247,245,235,0.06)", ink04: "rgba(247,245,235,0.04)",
+  brand: "#19F578", brandH: "#4CF89B", onBrand: "#0F1C14", cta: "#19F578", onCta: "#0F1C14", live: "#19F578", settled: "#4CF89B",
+  info: "#8FA8C4", success: "#4CF89B", warning: "#E8B25C", error: "#D87B92",
   backdrop: "rgba(0,0,0,0.65)",
-  btnPrimary: "#ECE6D6", btnPrimaryH: "#F4F0E8", onBtnPrimary: "#060606",
+  btnPrimary: "#19F578", btnPrimaryH: "#4CF89B", onBtnPrimary: "#0F1C14",
 };
 
 export const PALETTES: Record<Scheme, Palette> = { light: LIGHT, dark: DARK };
@@ -67,6 +73,8 @@ export const F = {
   sb: "Archivo_600SemiBold",
   b: "Archivo_700Bold",
   xb: "Archivo_800ExtraBold_Italic",
+  /** Titulares condensados como los de la app de Betterfly (Alumni Sans). */
+  display: "AlumniSans_700Bold",
   mono: MONO,
   monoM: MONO,
   monoB: MONO,

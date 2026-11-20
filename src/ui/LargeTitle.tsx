@@ -1,24 +1,27 @@
 import { useNavigation } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import { type ReactNode, useRef } from "react";
-import { Animated, Pressable, type StyleProp, View, type ViewStyle } from "react-native";
+import { Animated, Platform, Pressable, type StyleProp, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ico, Isotype } from "./kit";
+import { Ico, Isotype, Wordmark } from "./kit";
 import { T } from "./primitives";
+import { F } from "./theme";
 import { useTheme } from "./ThemeProvider";
 
 /** Alto de la barra de navegación sin la zona de estado. */
 export const NAV_H = 44;
 /** Hueco inferior de las páginas con tab bar (`padding-bottom: 120px`). */
 export const PAGE_BOTTOM = 120;
+/** Radio superior del panel blanco de contenido. */
+export const SHEET_RADIUS = 28;
 
 /**
- * Página con título grande que, al hacer scroll, se colapsa en una barra translúcida con título centrado (iOS):
+ * Página con cabecera crema y panel blanco de contenido (como la app de Betterfly), con título grande que, al hacer scroll, se colapsa en una barra translúcida con título centrado (iOS):
  * el fondo de la barra aparece en los primeros 12 px y el título pequeño entre 30 y 44 px.
  * `smallTitle` puede diferir del grande (Inicio: «Hola, Ana» → «Inicio»). `back` = etiqueta del botón «‹ Atrás».
  */
-export function LargeTitleScreen({ title, smallTitle, back, brand, titleGap = 18, children, contentStyle }: {
-  title: string; smallTitle?: string; back?: string; /** Marca de la app arriba del título (sólo Inicio). */ brand?: string; titleGap?: number; children: ReactNode; contentStyle?: StyleProp<ViewStyle>;
+export function LargeTitleScreen({ title, smallTitle, back, brand, brandRight, header, right, titleGap = 18, children, contentStyle }: {
+  title: string; smallTitle?: string; back?: string; /** Marca de la app arriba del título (sólo Inicio). */ brand?: string; /** Elemento a la derecha de la marca (nivel). */ brandRight?: ReactNode; /** Contenido que se queda en la cabecera crema, bajo el título (contadores de Inicio). */ header?: ReactNode; /** Elemento a la derecha de la barra de navegación. */ right?: ReactNode; titleGap?: number; children: ReactNode; contentStyle?: StyleProp<ViewStyle>;
 }) {
   const { c, scheme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -31,7 +34,7 @@ export function LargeTitleScreen({ title, smallTitle, back, brand, titleGap = 18
     <View style={{ flex: 1, backgroundColor: c.page }}>
       <Animated.ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[{ paddingTop: barH, paddingBottom: PAGE_BOTTOM }, contentStyle]}
+        contentContainerStyle={[{ paddingTop: barH, flexGrow: 1 }, contentStyle]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         scrollEventThrottle={16}
@@ -40,13 +43,21 @@ export function LargeTitleScreen({ title, smallTitle, back, brand, titleGap = 18
         {brand ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingBottom: 8 }}>
             <Isotype box={24} glyph={13} radius={6} />
-            <T w={600} s={15} ls={-0.01} color={c.inkStrong}>{brand}</T>
+            <View accessibilityLabel={brand}><Wordmark height={15} color={c.inkStrong} /></View>
+            <View style={{ flex: 1 }} />
+            {brandRight}
           </View>
         ) : null}
-        <View style={{ paddingHorizontal: 20, paddingBottom: titleGap }}>
-          <T w={700} s={34} lh={1.1} ls={-0.025} color={c.inkStrong}>{title}</T>
+        <View style={{ paddingHorizontal: 20, paddingBottom: header ? 4 : 16 }}>
+          <T s={46} lh={1} color={c.inkStrong} style={{ fontFamily: F.display }}>{title}</T>
         </View>
-        {children}
+        {header ? <View style={{ paddingBottom: 18 }}>{header}</View> : null}
+        {/* Panel blanco de contenido: esquinas redondeadas sobre la cabecera crema; el relleno inferior cubre el rebote del scroll. */}
+        <View style={{ flexGrow: 1, backgroundColor: c.sheet, borderTopLeftRadius: SHEET_RADIUS, borderTopRightRadius: SHEET_RADIUS, paddingTop: Math.max(titleGap, 20), paddingBottom: PAGE_BOTTOM }}>
+          {children}
+          {/* Sólo en nativo: en web un hijo absoluto sí alarga el scroll y dejaba 900 px en blanco bajo el contenido. */}
+          {Platform.OS === "web" ? null : <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: "100%", height: 900, backgroundColor: c.sheet }} />}
+        </View>
       </Animated.ScrollView>
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: barH, zIndex: 5 }} pointerEvents="box-none">
         <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: bgO, borderBottomWidth: 0.5, borderBottomColor: c.ink15, overflow: "hidden" }}>
@@ -61,6 +72,7 @@ export function LargeTitleScreen({ title, smallTitle, back, brand, titleGap = 18
               <T w={400} s={17} color={c.brand}>{back}</T>
             </Pressable>
           ) : null}
+          {right ? <View style={{ position: "absolute", right: 12, zIndex: 2 }}>{right}</View> : null}
           <Animated.View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, alignItems: "center", opacity: tO }}>
             <T w={600} s={17} color={c.inkStrong}>{smallTitle ?? title}</T>
           </Animated.View>

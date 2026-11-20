@@ -1,14 +1,14 @@
 import { contrast } from "../src/ui/contrast";
 import { alpha, DARK, fam, LIGHT, PALETTES, RADIUS, resolveScheme, RL, textStyle } from "../src/ui/theme";
 
-test("las dos paletas tienen los mismos nombres y los valores de tokens.css (Wallets v4: Paper / Ash)", () => {
+test("las dos paletas tienen los mismos nombres y los colores de la interfaz de Betterfly", () => {
   expect(Object.keys(LIGHT)).toEqual(Object.keys(DARK));
-  expect([LIGHT.page, LIGHT.canvas, LIGHT.card, LIGHT.sub]).toEqual(["#F6F6F4", "#EFEFEC", "#FFFFFF", "#ECECE8"]);
-  expect([LIGHT.inkStrong, LIGHT.inkBody, LIGHT.ink55]).toEqual(["#012821", "#0F3D34", "rgba(15,61,52,0.55)"]);
-  expect([LIGHT.brand, LIGHT.onBrand, LIGHT.settled]).toEqual(["#015F51", "#F4EFE0", "#3DA083"]);
-  expect([DARK.page, DARK.card, DARK.inkStrong, DARK.brand, DARK.onBrand]).toEqual(["#1A1A19", "#272725", "#FFFFFF", "#ECE6D6", "#060606"]);
-  expect([DARK.success, DARK.error]).toEqual(["#66C8A8", "#D87B92"]);
-  expect(RL.petrol).toBe("#015F51");
+  expect([LIGHT.page, LIGHT.canvas, LIGHT.card, LIGHT.sub]).toEqual(["#F7F5EB", "#EFECDF", "#FFFFFF", "#EDEADD"]);
+  expect([LIGHT.inkStrong, LIGHT.inkBody, LIGHT.ink55]).toEqual(["#0F1C14", "#1B2B21", "rgba(15,28,20,0.58)"]);
+  expect([LIGHT.brand, LIGHT.onBrand, LIGHT.settled]).toEqual(["#066C32", "#FFFFFF", "#098F43"]);
+  expect([DARK.page, DARK.card, DARK.inkStrong, DARK.brand, DARK.onBrand]).toEqual(["#0F1C14", "#1A2B20", "#FFFFFF", "#19F578", "#0F1C14"]);
+  expect([DARK.success, DARK.error]).toEqual(["#4CF89B", "#D87B92"]);
+  expect(RL.petrol).toBe("#066C32");
   expect(RADIUS).toEqual({ card: 6, control: 6, sheet: 12, pill: 9999 });
 });
 

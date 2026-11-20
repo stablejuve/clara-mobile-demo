@@ -1,21 +1,17 @@
-import { KYC_RETURN_URL, parseDeepLink } from "../src/navigation/deepLink";
+import { parseDeepLink } from "../src/navigation/deepLink";
 
-test("el regreso del KYC es relayermobiledemo://recibo/kyc-return (con o sin query)", () => {
-  expect(KYC_RETURN_URL).toBe("relayermobiledemo://recibo/kyc-return");
-  expect(parseDeepLink(KYC_RETURN_URL)).toEqual({ kind: "kyc-return" });
-  expect(parseDeepLink("relayermobiledemo://recibo/kyc-return?status=complete")).toEqual({ kind: "kyc-return" });
-  expect(parseDeepLink("relayermobiledemo://recibo/kyc-return/")).toEqual({ kind: "kyc-return" });
+test("los deep links de la demo sólo existen en desarrollo", () => {
+  expect(parseDeepLink("relayermobiledemo://demo/seed/active", true)).toEqual({ kind: "seed", to: "active" });
+  expect(parseDeepLink("relayermobiledemo://demo/run/rail", true)).toEqual({ kind: "run", action: "rail" });
+  expect(parseDeepLink("relayermobiledemo://demo/open/card?scrollEnd=1", true)).toEqual({ kind: "open", screen: "card", scrollEnd: true });
+  expect(parseDeepLink("relayermobiledemo://demo/seed/active", false)).toBeNull();
+  expect(parseDeepLink("relayermobiledemo://demo/run/rail")).toBeNull();
 });
 
 test("todo lo demás se ignora", () => {
-  expect(parseDeepLink("relayermobiledemo://recibo/otra")).toBeNull();
-  expect(parseDeepLink("https://relayer.fi/recibo/kyc-return")).toBeNull();
-  expect(parseDeepLink("")).toBeNull();
-  expect(parseDeepLink(null)).toBeNull();
-  expect(parseDeepLink(undefined)).toBeNull();
-});
-
-test("demo/seed/active sólo en desarrollo", () => {
-  expect(parseDeepLink("relayermobiledemo://demo/seed/active", true)).toEqual({ kind: "seed", to: "active" });
-  expect(parseDeepLink("relayermobiledemo://demo/seed/active", false)).toBeNull();
+  expect(parseDeepLink("relayermobiledemo://recibo/kyc-return", true)).toBeNull();
+  expect(parseDeepLink("https://relayer.fi/demo/seed/active", true)).toBeNull();
+  expect(parseDeepLink("", true)).toBeNull();
+  expect(parseDeepLink(null, true)).toBeNull();
+  expect(parseDeepLink(undefined, true)).toBeNull();
 });

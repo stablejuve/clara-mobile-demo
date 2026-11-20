@@ -1,44 +1,33 @@
 import { View } from "react-native";
-import type { AppCtx } from "../../ctx";
-import { t } from "../../i18n/es";
-import { cardShadow, Eyebrow, Group, Hairline, Isotype, ListRow, Press } from "../../ui/kit";
+import { tr } from "../../gdb/copy";
+import { useGdb } from "../../gdb/store";
+import { nav } from "../../gdb/ui";
+import { Eyebrow, Group, Hairline, ListRow } from "../../ui/kit";
 import { LargeTitleScreen } from "../../ui/LargeTitle";
-import { PromoCard } from "../PromoCard";
-import { T } from "../../ui/primitives";
-import { RADIUS } from "../../ui/theme";
-import { useTheme } from "../../ui/ThemeProvider";
+import { DollarBenefit } from "../DollarBenefit";
 
-/** Beneficios de la anfitriona: la tarjeta de Recibo (Activar / Abrir) y el resto del catálogo de Acme. */
-export function BenefitsScreen({ nav, module }: AppCtx) {
-  const { c, scheme } = useTheme();
+/** Beneficios de Betterfly: Global Dollar Benefits se anuncia arriba mientras no hay cuenta; después es una fila más del catálogo. */
+export function BenefitsScreen() {
+  const { s } = useGdb();
+  const open = () => nav(s.kyc.status === "approved" ? "balance" : "onboarding");
   return (
-    <LargeTitleScreen title={t("tab.benefits")}>
-      <View style={{ paddingHorizontal: 16, gap: 22 }}>
-        {module.active ? (
-          <View style={[{ gap: 18, padding: 20, borderRadius: RADIUS.card, backgroundColor: c.card }, cardShadow(scheme)]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-              <Isotype box={48} glyph={24} />
-              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <T w={600} s={19} lh={1.2} ls={-0.01} color={c.inkStrong}>{t("rc.name")}</T>
-                <T w={400} s={14} lh={1.35} color={c.ink55}>{t("rc.pitch")}</T>
-              </View>
-            </View>
-            <Press onPress={() => (module.active ? nav("balance") : nav("onboarding"))} accessibilityLabel="benefits-recibo-cta"
-              style={{ height: 46, borderRadius: RADIUS.pill, backgroundColor: c.cta, alignItems: "center", justifyContent: "center" }}>
-              <T w={600} s={16} color={c.onCta}>{module.active ? t("rc.open") : t("rc.activate")}</T>
-            </Press>
-          </View>
-        ) : (
-          <PromoCard onPress={() => nav("onboarding")} cta={t("promo.cta")} accessibilityLabel="benefits-recibo-cta" />
-        )}
-        <View style={{ gap: 8 }}>
-          <Eyebrow style={{ paddingHorizontal: 4 }}>{t("benefits.more")}</Eyebrow>
+    <LargeTitleScreen title={tr("tab.benefits")}>
+      <View style={{ paddingHorizontal: 16, gap: 24 }}>
+        {s.invitation.status === "none" ? null : s.kyc.status === "approved" ? (
           <Group>
-            <ListRow icon="shield" title={t("benefits.health")} value={t("benefits.active")} valueColor={c.ink40} py={13} />
+            <ListRow icon="globe" title={tr("gdb.name")} sub={tr("gdb.sub")} chevron onPress={open} accessibilityLabel="benefits-gdb" />
+          </Group>
+        ) : <DollarBenefit a11y="benefits" />}
+        <View style={{ gap: 8 }}>
+          <Eyebrow style={{ paddingHorizontal: 4 }}>{tr("home.more")}</Eyebrow>
+          <Group>
+            <ListRow icon="shield" title={tr("home.b.life")} value={tr("home.b.lifeV")} />
+          <Hairline inset={48} />
+          <ListRow icon="user" title={tr("home.b.mind")} value={tr("home.b.mindV")} />
+          <Hairline inset={48} />
+          <ListRow icon="activity" title={tr("home.b.gym")} value={tr("home.b.gymV")} />
             <Hairline inset={48} />
-            <ListRow icon="activity" title={t("benefits.gym")} value="−50 %" valueColor={c.ink40} py={13} />
-            <Hairline inset={48} />
-            <ListRow icon="gift" title={t("benefits.vouchers")} value="$2,400" valueMono valueColor={c.ink40} py={13} />
+            <ListRow icon="gift" title={tr("home.b.vouchers")} value={tr("home.b.vouchersV")} />
           </Group>
         </View>
       </View>

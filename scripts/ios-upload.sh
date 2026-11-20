@@ -2,7 +2,7 @@
 # altool SALE CON 0 aunque la subida falle (medido en Proflores 2026-08-18): se grep-ea la salida.
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IPA="$DIR/build/export/AcmeBeneficios.ipa"
+IPA="$DIR/build/export/Betterfly.ipa"
 _k="${ASC_KEY_ID-}"; _i="${ASC_ISSUER_ID-}"
 if [ -f "$DIR/.env.asc" ]; then set -a; . "$DIR/.env.asc"; set +a; fi
 [ -n "$_k" ] && ASC_KEY_ID="$_k"; [ -n "$_i" ] && ASC_ISSUER_ID="$_i"
