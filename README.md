@@ -1,6 +1,6 @@
 # relayer-mobiledemo
 
-Demo Expo del módulo **Recibo** («powered by Relayer») embebido en una app de beneficios genérica, **Acme Beneficios**.
+Demo Expo embebido en una app de beneficios genérica, **Acme Beneficios**.
 Todo corre contra una capa mock: no hay backend, ni Bridge, ni Turnkey, ni Stripe. Spec: `docs/specs/2026-11-11-relayer-mobiledemo-design.md`.
 
 - Anfitriona: Inicio · Beneficios · Perfil (relleno estático). Beneficios tiene la tarjeta «Recibo · powered by Relayer».
@@ -37,9 +37,3 @@ __tests__/              lógica pura (jest-expo)
 ```
 
 La fase de backend reemplaza `createMockApi` en `App.tsx` por un cliente HTTP que implemente `RelayerModuleApi`; las pantallas no cambian.
-
-## Identidad
-
-`fi.relayer.mobiledemo`, esquema `relayermobiledemo://`, nombre «Acme Beneficios». Icono y splash son placeholders (`node scripts/make-placeholder-assets.mjs`).
-TestFlight: `scripts/ios-archive.sh` y `scripts/ios-upload.sh` (heredados; requieren `.env.asc` con la API key de App Store Connect, nunca commiteado;
-subir `ios.buildNumber` en `app.config.ts` antes de cada subida).
