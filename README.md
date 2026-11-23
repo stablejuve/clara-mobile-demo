@@ -1,4 +1,4 @@
-# relayer-mobiledemo
+# clara-mobiledemo
 
 Demo Expo embebido en una app de beneficios genérica, **Acme Beneficios**.
 Todo corre contra una capa mock: no hay backend, ni Bridge, ni Turnkey, ni Stripe. Spec: `docs/specs/2026-11-11-relayer-mobiledemo-design.md`.
